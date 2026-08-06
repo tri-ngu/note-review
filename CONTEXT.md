@@ -1,5 +1,11 @@
 # Note Review
 
+## Responsibilities
+
+**You (Tri):** project objective, scope, structure/tradeoff decisions, review and design all code, check real results, give feedback.
+
+**Claude Code:** read and compile information, propose solutions after, implement per agreed design, find errors/inconsistencies, review and update this doc, clarify via /grilling whenever more info/context needed.
+
 Turns a student's PDF notes into an AI-generated question set that can be reviewed like flashcards, and (in a later version) played as a live multiplayer quiz game.
 
 ## Language
