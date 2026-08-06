@@ -1,0 +1,4 @@
+pydantic>=2.0
+pypdf>=5.0
+openai-agents
+python-dotenv>=1.0
