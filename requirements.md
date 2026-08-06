@@ -4,6 +4,23 @@ Turns a student's PDF notes into an AI-generated Question Set, reviewable as a s
 
 v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 
+## Intended User & Needs
+
+**Intended user**: any student self-studying from PDF notes or textbook excerpts — any age/level, any subject — working alone to prepare for a test/exam.
+
+**User needs** (equal weight, not ranked):
+- Time savings — skip manually turning notes into a testable question set.
+- Self-testing capacity the student doesn't have alone — passive familiarity with material becomes an actual question bank.
+- (v2) Turns solo review into a social/competitive study activity via Room.
+
+**Main use cases**:
+1. Upload a Note, review/adjust the Analyzer's concept breakdown, generate a Question Set, review it (Review Session).
+2. Re-review the same Question Set any number of times (reshuffled each time) without regenerating.
+3. Edit a Question's text/options/answers/explanation in place, any time, without regenerating.
+4. Retry generation after a pipeline failure, without re-uploading.
+5. Upload a new Note, discarding the previous session's Question Set.
+6. (v2) Host a live Room from a generated Question Set; Players join via PIN/QR and compete in real time.
+
 ## Functional Requirements
 
 ### Input
@@ -17,7 +34,7 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 
 ### Question generation
 
-- Uses the OpenAI Agents SDK (the orchestration framework) via three agents (Analyzer, Generator, Verifier) plus a self-checking verify loop. The underlying model calls run against NVIDIA NIM's free API (not OpenAI's own billed models) — see `DESIGN.md` for the model comparison and why. Full pipeline detail, agent responsibilities, and data model live in `DESIGN.md` — this section states behavior only.
+- Uses the OpenAI Agents SDK (the orchestration framework) via three agents (Analyzer, Generator, Verifier) plus a self-checking verify loop. The underlying model calls run against Groq's free API (not OpenAI's own billed models) — see `DESIGN.md` for the model comparison and why. Full pipeline detail, agent responsibilities, and data model live in `DESIGN.md` — this section states behavior only.
 - Before generation, an Analyzer pass identifies key concepts in the Note, weighs their relative importance, and allocates a question count per concept. The user reviews and can adjust this concept/weight/count breakdown before generation proceeds.
 - After the Analyzer's allocation is confirmed, generation runs through an internal generate-then-verify loop (capped at 5 verify iterations) that checks each Question for correctness and quality against the Note before the Question Set is finalized. This loop is internal to one generation request — it is not user-facing regeneration.
 - Generation is one-shot per upload from the user's perspective: no user-triggered regenerating of the whole Question Set or individual Questions in v1. To try again, user re-uploads (or retries after a failure — see below).
@@ -38,20 +55,23 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 - Forward-only navigation — no going back to a previous Question.
 - After answering each Question, the user immediately sees correct/incorrect plus the Question's explanation.
 - At the end of the session, show a Summary: score (X/Y correct) and the list of missed Questions with their explanations.
+- User can restart the Review Session (reshuffled) any number of times on the same Question Set. Each pass is independent — no score history kept across passes.
 
 
 
 ### Error handling
 
 - Non-PDF file, oversized file, or scanned/image-only PDF: reject upload with a clear, specific error before generation is attempted.
-- Generation pipeline failure or timeout (e.g. from the NVIDIA NIM API — the free tier has no production SLA and can be flaky, per `DESIGN.md`): show a generic error message with a retry button that re-attempts generation using the already-uploaded Note (no re-upload needed).
+- Generation pipeline failure or timeout (e.g. from the Groq API — the free tier has no production SLA and can be flaky, per `DESIGN.md`): show a generic error message with a retry button that re-attempts generation using the already-uploaded Note (no re-upload needed).
 
 
 
 ### Platform & persistence
 
-- Web app (responsive), no native mobile/desktop app in v1.
-- No user accounts or login. Question Sets and Review Session state persist per session/device only.
+- Web app (responsive). No native mobile/desktop app — permanent non-goal, not just a v1 cut (see Non-Goals).
+- No user accounts or login — permanent non-goal, not just a v1 cut (see Non-Goals). Session identified via HTTP-only cookie.
+- Question Set and Review Session state persist server-side, in memory, keyed by that cookie, until the server process restarts. No database, no persistence across a server restart.
+- One Question Set per session at a time — a new upload replaces the previous Question Set. No browsing or switching between previously-generated Question Sets in v1.
 
 
 
@@ -61,23 +81,79 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 
 
 
+## Non-Goals
+
+**Permanent** — not deferred to any planned version, would require a scope decision to revisit:
+- OCR / scanned or image-only PDFs.
+- Multi-language Note content (English-only).
+- User accounts or login.
+- Native mobile or desktop app.
+
+**v1-only** — cut for now, not scheduled, may be revisited:
+- Export, download, or share of a Question Set (PDF/JSON/link). A Question Set exists only in-app, tied to the session cookie.
+- Browsing or switching between multiple saved Question Sets — one active Question Set per session (see Platform & persistence above).
+
+
+
+## Acceptance Criteria
+
+### Upload & input validation
+- Given a text-based PDF ≤20MB, when the user uploads it, then the upload succeeds and the Analyzer pass begins.
+- Given a non-PDF file, when the user uploads it, then the upload is rejected with a specific "not a PDF" error before any generation attempt.
+- Given a PDF over 20MB, when the user uploads it, then the upload is rejected with a specific "file too large" error before any generation attempt.
+- Given a scanned/image-only PDF (no selectable text), when the user uploads it, then the upload is rejected with a specific "no extractable text" error before any generation attempt.
+- Given a Note with non-English content, quality/behavior is best-effort and unvalidated in v1 — no dedicated rejection is required (English-only is a scope cut, not an enforced check).
+
+### Analyzer checkpoint
+- Given a successfully parsed Note, when the Analyzer pass completes, then the user sees a list of concepts, each with a `weight_percentage` and `question_count`, and the weights sum to 100.
+- Given the checkpoint screen, when the user edits any `weight_percentage` or `question_count`, then totals recalculate live and confirmation is blocked until weights re-sum to 100.
+- Given a confirmed allocation, when the user confirms, then the total `question_count` is locked and cannot change for the rest of that generation run.
+
+### Generation & verify loop
+- Given a confirmed allocation, when generation runs, then the resulting Question Set has exactly the locked total `question_count`, indexed 1..N, unchanged in length from Generator's initial pass through the verify loop.
+- Given a generated Question, then it has exactly 4 options, is tagged Multiple-Choice (1 correct answer) or Select-All (1-4 correct answers), and includes an explanation and `page_number` grounded in the Note.
+- Given the verify loop runs, when every concept's Verifier call returns satisfactory, then the loop exits early (before 5 iterations).
+- Given the verify loop reaches 5 iterations without full satisfaction, then the Question Set ships as-is with a non-blocking notice, not an error.
+- Given the user specified a target question count, when generation completes, then the Question Set's length equals that count (subject to the sparse-content case below).
+- Given the user did not specify a count and the Note supports fewer than 5 Questions, when generation completes, then the response includes an explanation of why the count is low.
+
+### Review Session
+- Given a generated Question Set, when the user starts a Review Session, then Questions are presented one at a time, in shuffled order, with no backward navigation.
+- Given the user answers a Question, then correct/incorrect feedback and that Question's explanation are shown immediately, before advancing.
+- Given the last Question is answered, then a Summary appears showing score (X/Y correct) and the list of missed Questions with their explanations.
+- Given a completed Review Session, when the user chooses to review again, then a new session starts on the same Question Set, reshuffled, independent of the previous pass's score.
+
+### Editing
+- Given a generated Question Set, when the user edits a Question's text, options, correct answers, or explanation from the flashcard/review view, then the change is saved and reflected immediately, without regenerating any other Question.
+- Given an edit, then no Question can be added to or removed from the Question Set — length stays fixed at the frozen size.
+
+### Error handling
+- Given a generation pipeline failure or timeout, when it occurs, then a generic error message with a retry button is shown, and retry re-attempts generation using the already-uploaded Note without requiring re-upload.
+
+### Persistence
+- Given a valid session cookie, when the user closes and reopens the browser while the server process is still running, then their Question Set and Review Session state are still available.
+- Given the server process restarts, then all in-memory Question Set/session state is lost — no recovery expected.
+- Given a user uploads a new Note while a Question Set already exists for their session, then the previous Question Set is discarded and replaced.
+
+
+
 ## Planned Versions (1.x – 2.x)
 
-Features discussed or explicitly deferred during requirements gathering, not committed to v1. Ordering/timeline TBD — edit as needed.
+Features discussed or explicitly deferred during requirements gathering, not committed to v1. No hard dates — priority order only. v1.x order below is fixed; v2 does not start until every v1.x item has shipped.
 
-### v1.x (flashcard/review track — incremental improvements)
+### v1.x (flashcard/review track — incremental improvements, in order)
 
-- Multi-PDF upload: merge multiple Notes into a single Question Set.
-- Regeneration controls: regenerate the whole Question Set, or a single Question, without re-uploading.
-- Adjustable difficulty levels for generated Questions.
-- Larger file support (raise or remove the 20MB cap, chunked processing for big Notes).
-- Deeper review mechanics: spaced repetition, requeueing missed Questions, "mark as known / still learning."
+1. Regeneration controls: regenerate the whole Question Set, or a single Question, without re-uploading.
+2. Multi-PDF upload: merge multiple Notes into a single Question Set.
+3. Deeper review mechanics: spaced repetition, requeueing missed Questions, "mark as known / still learning."
+4. Adjustable difficulty levels for generated Questions.
+5. Larger file support (raise or remove the 20MB cap, chunked processing for big Notes).
 
 
 
 ### v2 (Kahoot-style live game mode)
 
-Reuses the v1 upload → generate flow directly (no separate v2 upload path, no browsing previously-saved Question Sets). After generation, the user lands on a hub screen with two options — **Review** (v1 flow) or **Create Room** (below) — and returns to this hub after finishing either, so the same Question Set can be reviewed and/or used to host a Room repeatedly.
+Starts only after every v1.x item above has shipped. Reuses the v1 upload → generate flow directly (no separate v2 upload path, no browsing previously-saved Question Sets). After generation, the user lands on a hub screen with two options — **Review** (v1 flow) or **Create Room** (below) — and returns to this hub after finishing either, so the same Question Set can be reviewed and/or used to host a Room repeatedly.
 
 - Host creates a Room from a Question Set; Players join via a 4-digit numeric PIN or QR code.
 - Room capped at 10 Players. No accounts — nothing about a Player beyond their nickname and score is stored.
