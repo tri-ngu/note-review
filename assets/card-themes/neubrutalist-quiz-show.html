@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neubrutalist Quiz Show — Flashcard Theme (Reference)</title>
+<style>
+  /* ============================================================
+     SHARED BASE — reset, page chrome, flip mechanics, layout.
+     Kept identical across every /assets/card-themes/*.html file
+     so themes stay swappable without touching structure.
+     ============================================================ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e9e6df;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  .intro {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 32px;
+  }
+  .intro h1 {
+    font-size: clamp(24px, 4vw, 34px);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .intro p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #55534c;
+    max-width: 640px;
+  }
+  .intro .flag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+
+  .theme {
+    padding: 24px 24px 88px;
+  }
+  .theme-meta {
+    max-width: 900px;
+    margin: 0 auto 36px;
+  }
+  .theme-meta h2 { margin: 0; font-size: 24px; }
+  .theme-meta p { margin: 4px 0 0; font-size: 14px; opacity: 0.75; max-width: 560px; }
+
+  .card-stage {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  /* Flip mechanics — shared skeleton, theme CSS below supplies the paint */
+  .flashcard {
+    width: min(420px, 92vw);
+    height: 460px;
+    perspective: 1800px;
+    cursor: pointer;
+  }
+  .flashcard:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 4px; }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flashcard.is-flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .flip-hint {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .card-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .card-nav .progress { font-variant-numeric: tabular-nums; opacity: 0.7; }
+  .nav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 12px;
+  }
+
+  .q-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .q-text { font-size: 18px; line-height: 1.4; margin: 0; }
+  .options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .opt { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+  .opt-mark { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+  .card-footer { font-size: 12px; opacity: 0.6; display: flex; justify-content: space-between; padding-top: 6px; }
+  .edit-btn { align-self: flex-start; font-size: 12.5px; cursor: pointer; border: none; }
+  .explanation { font-size: 13.5px; line-height: 1.5; opacity: 0.85; }
+  .concept-tag { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; }
+
+  /* ============================================================
+     NEUBRUTALIST QUIZ SHOW
+     Loud, playful, game-show energy — thick borders, hard offset
+     shadows, rubber-stamp "CORRECT" mark.
+     ============================================================ */
+  .nb { background: #ffe347; }
+  .nb .theme-meta h2 { font-family: Bahnschrift, 'Arial Black', Impact, sans-serif; font-size: 30px; text-transform: uppercase; }
+  .nb .theme-meta p { font-weight: 600; }
+  .nb .card-face {
+    background: #fff;
+    border: 4px solid #111;
+    box-shadow: 10px 10px 0 #111;
+  }
+  .nb .q-body { font-family: 'Segoe UI', sans-serif; padding: 26px; }
+  .nb .q-text { font-family: Bahnschrift, 'Arial Black', sans-serif; font-weight: 800; font-size: 21px; text-transform: uppercase; }
+  .nb .opt { background: #f4f1e8; border: 3px solid #111; padding: 8px 10px; font-weight: 700; }
+  .nb .opt-mark { border: 3px solid #111; border-radius: 50%; background: #fff; }
+  .nb.is-sa .opt-mark { border-radius: 3px; }
+  .nb .opt.correct { background: #2b6cff; color: #fff; }
+  .nb .opt.correct .opt-mark { background: #ff3d7f; border-color: #111; }
+  .nb .card-back { position: relative; }
+  .nb .card-back::after {
+    content: "CORRECT!";
+    position: absolute; top: 30px; right: -10px;
+    font-family: Stencil, Bahnschrift, sans-serif;
+    font-size: 22px; color: #ff3d7f;
+    border: 4px solid #ff3d7f;
+    padding: 4px 10px;
+    transform: rotate(12deg);
+    background: rgba(255,255,255,0.85);
+  }
+  .nb .concept-tag { background: #111; color: #ffe347; padding: 3px 8px; display: inline-block; font-weight: 800; text-transform: uppercase; }
+  .nb .card-footer { font-weight: 700; }
+  .nb .edit-btn { font-family: Bahnschrift, sans-serif; font-weight: 800; background: #ff3d7f; color: #fff; border: 3px solid #111; padding: 6px 14px; text-transform: uppercase; align-self: flex-start; }
+  .nb .flip-hint { font-weight: 800; text-transform: uppercase; }
+  .nb .card-nav { font-weight: 800; }
+  .nb .nav-btn { border: 3px solid #111; background: #fff; padding: 8px 16px; box-shadow: 4px 4px 0 #111; }
+  .nb .nav-btn:hover { transform: translate(2px,2px); box-shadow: 2px 2px 0 #111; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Neubrutalist Quiz Show</h1>
+  <p>Thick borders, hard offset shadows, a rubber-stamp "CORRECT!" — loud and game-show ready (a nod toward the future Room mode). Note Review's flashcard theme reference file.</p>
+  <span class="flag">Reference — not the default</span>
+</div>
+
+<main class="theme nb">
+  <div class="theme-meta">
+    <h2>Neubrutalist Quiz Show</h2>
+    <p>Same card mechanics from <code>DESIGN.md</code> — click-to-flip, radio/checkbox by question type, Edit on the back, Next/Prev + progress.</p>
+  </div>
+  <div class="card-stage">
+    <div class="flashcard is-sa" tabindex="0" role="button" aria-label="Flip card" onclick="toggleFlip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlip(this)}">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div class="q-body">
+            <p class="q-text">Which of these are stages of the water cycle?</p>
+            <ul class="options">
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Precipitation</li>
+              <li class="opt"><span class="opt-mark"></span>Collection</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="q-body">
+            <p class="q-text">Which of these are stages of the water cycle?</p>
+            <ul class="options">
+              <li class="opt correct"><span class="opt-mark"></span>Evaporation</li>
+              <li class="opt correct"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt correct"><span class="opt-mark"></span>Precipitation</li>
+              <li class="opt correct"><span class="opt-mark"></span>Collection</li>
+            </ul>
+            <p class="explanation">All four! The cycle has no true start or end — collection just restarts it.</p>
+            <span class="concept-tag">Water Cycle Overview</span>
+            <button class="edit-btn">EDIT ✎</button>
+            <div class="card-footer"><span>PG. 1</span><span>8 / 8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="flip-hint">TAP TO FLIP!!</p>
+    <div class="card-nav"><button class="nav-btn">◀ PREV</button><span class="progress">CARD 8 OF 8</span><button class="nav-btn">NEXT ▶</button></div>
+  </div>
+</main>
+
+<script>
+  function toggleFlip(card) {
+    card.classList.toggle('is-flipped');
+  }
+</script>
+</body>
+</html>

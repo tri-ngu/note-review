@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chalkboard Classroom — Flashcard Theme (Reference)</title>
+<style>
+  /* ============================================================
+     SHARED BASE — reset, page chrome, flip mechanics, layout.
+     Kept identical across every /assets/card-themes/*.html file
+     so themes stay swappable without touching structure.
+     ============================================================ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e9e6df;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  .intro {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 32px;
+  }
+  .intro h1 {
+    font-size: clamp(24px, 4vw, 34px);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .intro p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #55534c;
+    max-width: 640px;
+  }
+  .intro .flag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+
+  .theme {
+    padding: 24px 24px 88px;
+  }
+  .theme-meta {
+    max-width: 900px;
+    margin: 0 auto 36px;
+  }
+  .theme-meta h2 { margin: 0; font-size: 24px; }
+  .theme-meta p { margin: 4px 0 0; font-size: 14px; opacity: 0.75; max-width: 560px; }
+
+  .card-stage {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  /* Flip mechanics — shared skeleton, theme CSS below supplies the paint */
+  .flashcard {
+    width: min(420px, 92vw);
+    height: 460px;
+    perspective: 1800px;
+    cursor: pointer;
+  }
+  .flashcard:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 4px; }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flashcard.is-flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .flip-hint {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .card-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .card-nav .progress { font-variant-numeric: tabular-nums; opacity: 0.7; }
+  .nav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 12px;
+  }
+
+  .q-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .q-text { font-size: 18px; line-height: 1.4; margin: 0; }
+  .options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .opt { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+  .opt-mark { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+  .card-footer { font-size: 12px; opacity: 0.6; display: flex; justify-content: space-between; padding-top: 6px; }
+  .edit-btn { align-self: flex-start; font-size: 12.5px; cursor: pointer; border: none; }
+  .explanation { font-size: 13.5px; line-height: 1.5; opacity: 0.85; }
+  .concept-tag { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; }
+
+  /* ============================================================
+     CHALKBOARD CLASSROOM
+     Warm nostalgic. Green board, chalk-wobble dashed border,
+     hand-lettered heading, chalk-dust texture.
+     ============================================================ */
+  .cb { background: #24382c; }
+  .cb .theme-meta h2, .cb .theme-meta p { color: #f5f2e9; }
+  .cb .theme-meta h2 { font-family: 'Segoe Print', 'Bradley Hand ITC', cursive; }
+  .cb .card-face {
+    background: #2f4538;
+    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 6px 6px;
+    border: 2px dashed rgba(245,242,233,0.55);
+    box-shadow: 0 20px 34px -20px rgba(0,0,0,0.55);
+  }
+  .cb .q-body { font-family: 'Segoe Print', cursive; color: #f5f2e9; padding: 28px; }
+  .cb .q-text { font-size: 19px; }
+  .cb .opt { font-family: 'Segoe UI', sans-serif; }
+  .cb .opt-mark { border: 2px solid #f5f2e9; border-radius: 50%; opacity: 0.85; }
+  .cb.is-sa .opt-mark { border-radius: 3px; }
+  .cb .opt.correct .opt-mark { background: #f2d680; border-color: #f2d680; }
+  .cb .opt.correct { color: #f2d680; }
+  .cb .concept-tag { font-family: 'Segoe Print', cursive; color: #e8a0bf; font-size: 15px; text-transform: none; letter-spacing: 0; }
+  .cb .card-footer { color: rgba(245,242,233,0.65); font-family: 'Segoe UI', sans-serif; }
+  .cb .edit-btn { font-family: 'Segoe Print', cursive; background: none; color: #f5f2e9; border: 2px dashed rgba(245,242,233,0.6); padding: 5px 12px; align-self: flex-start; }
+  .cb .flip-hint, .cb .card-nav { color: #d8d6c9; }
+  .cb .nav-btn { color: #f2d680; font-family: 'Segoe Print', cursive; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Chalkboard Classroom</h1>
+  <p>Green board, chalk-dust texture, a wobbly dashed border — nostalgic and unmistakably "classroom." Note Review's flashcard theme reference file.</p>
+  <span class="flag">Reference — not the default</span>
+</div>
+
+<main class="theme cb">
+  <div class="theme-meta">
+    <h2>Chalkboard Classroom</h2>
+    <p>Same card mechanics from <code>DESIGN.md</code> — click-to-flip, radio/checkbox by question type, Edit on the back, Next/Prev + progress.</p>
+  </div>
+  <div class="card-stage">
+    <div class="flashcard" tabindex="0" role="button" aria-label="Flip card" onclick="toggleFlip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlip(this)}">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div class="q-body">
+            <p class="q-text">Which term describes water flowing over land into streams and rivers?</p>
+            <ul class="options">
+              <li class="opt"><span class="opt-mark"></span>Surface runoff</li>
+              <li class="opt"><span class="opt-mark"></span>Infiltration</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="q-body">
+            <p class="q-text">Which term describes water flowing over land into streams and rivers?</p>
+            <ul class="options">
+              <li class="opt correct"><span class="opt-mark"></span>Surface runoff</li>
+              <li class="opt"><span class="opt-mark"></span>Infiltration</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+            </ul>
+            <p class="explanation">Runoff completes the visible portion of the cycle, and can carry sediment, nutrients, and pollutants downhill with it.</p>
+            <span class="concept-tag">~ Runoff ~</span>
+            <button class="edit-btn">erase &amp; edit</button>
+            <div class="card-footer"><span>pg 1</span><span>card 7/8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="flip-hint">tap the board</p>
+    <div class="card-nav"><button class="nav-btn">‹ prev</button><span class="progress">Card 7 of 8</span><button class="nav-btn">next ›</button></div>
+  </div>
+</main>
+
+<script>
+  function toggleFlip(card) {
+    card.classList.toggle('is-flipped');
+  }
+</script>
+</body>
+</html>

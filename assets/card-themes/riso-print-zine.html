@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riso Print Zine — Flashcard Theme (Reference)</title>
+<style>
+  /* ============================================================
+     SHARED BASE — reset, page chrome, flip mechanics, layout.
+     Kept identical across every /assets/card-themes/*.html file
+     so themes stay swappable without touching structure.
+     ============================================================ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e9e6df;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  .intro {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 32px;
+  }
+  .intro h1 {
+    font-size: clamp(24px, 4vw, 34px);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .intro p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #55534c;
+    max-width: 640px;
+  }
+  .intro .flag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+
+  .theme {
+    padding: 24px 24px 88px;
+  }
+  .theme-meta {
+    max-width: 900px;
+    margin: 0 auto 36px;
+  }
+  .theme-meta h2 { margin: 0; font-size: 24px; }
+  .theme-meta p { margin: 4px 0 0; font-size: 14px; opacity: 0.75; max-width: 560px; }
+
+  .card-stage {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  /* Flip mechanics — shared skeleton, theme CSS below supplies the paint */
+  .flashcard {
+    width: min(420px, 92vw);
+    height: 460px;
+    perspective: 1800px;
+    cursor: pointer;
+  }
+  .flashcard:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 4px; }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flashcard.is-flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .flip-hint {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .card-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .card-nav .progress { font-variant-numeric: tabular-nums; opacity: 0.7; }
+  .nav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 12px;
+  }
+
+  .q-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .q-text { font-size: 18px; line-height: 1.4; margin: 0; }
+  .options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .opt { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+  .opt-mark { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+  .card-footer { font-size: 12px; opacity: 0.6; display: flex; justify-content: space-between; padding-top: 6px; }
+  .edit-btn { align-self: flex-start; font-size: 12.5px; cursor: pointer; border: none; }
+  .explanation { font-size: 13.5px; line-height: 1.5; opacity: 0.85; }
+  .concept-tag { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; }
+
+  /* ============================================================
+     RISO PRINT ZINE
+     Indie/artsy. Duotone misregistration effect on the headline,
+     grainy paper, collage-tape corner.
+     ============================================================ */
+  .rz { background: #fff7e8; }
+  .rz .theme-meta h2 {
+    font-family: 'Berlin Sans FB', 'Century Gothic', sans-serif;
+    color: #14131a;
+    text-shadow: 2px 0 0 #ff48b0, -2px 0 0 #0074ff;
+  }
+  .rz .theme-meta p { color: #55524a; }
+  .rz .card-face { background: #fffdf5; border: 1px solid #14131a; box-shadow: 8px 8px 0 rgba(255,72,176,0.35), -6px -6px 0 rgba(0,116,255,0.2); }
+  .rz .q-body { font-family: 'Century Gothic', 'Segoe UI', sans-serif; color: #14131a; padding: 28px; }
+  .rz .q-text { font-weight: 700; }
+  .rz .opt-mark { border: 2px solid #14131a; border-radius: 50%; background: #fff; }
+  .rz.is-sa .opt-mark { border-radius: 3px; }
+  .rz .opt.correct .opt-mark { background: #ff6b35; }
+  .rz .opt.correct { color: #ff6b35; font-weight: 700; }
+  .rz .concept-tag { background: #0074ff; color: #fff; padding: 2px 8px; display: inline-block; }
+  .rz .card-footer { color: #8a8578; }
+  .rz .edit-btn { font-family: 'Berlin Sans FB', 'Century Gothic', sans-serif; background: #ff48b0; color: #fff; border: none; padding: 6px 14px; align-self: flex-start; }
+  .rz .flashcard::before {
+    content: ""; position: absolute; top: -10px; left: 30px; width: 60px; height: 22px;
+    background: rgba(255, 235, 150, 0.7); transform: rotate(-6deg); z-index: 2;
+  }
+  .rz .flip-hint, .rz .card-nav { color: #55524a; }
+  .rz .nav-btn { color: #ff48b0; font-family: 'Berlin Sans FB', 'Century Gothic', sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Riso Print Zine</h1>
+  <p>Duotone misregistration on the headline, tape-corner collage, grainy paper — indie zine energy. Note Review's flashcard theme reference file.</p>
+  <span class="flag">Reference — not the default</span>
+</div>
+
+<main class="theme rz">
+  <div class="theme-meta">
+    <h2>Riso Print Zine</h2>
+    <p>Same card mechanics from <code>DESIGN.md</code> — click-to-flip, radio/checkbox by question type, Edit on the back, Next/Prev + progress.</p>
+  </div>
+  <div class="card-stage">
+    <div class="flashcard" tabindex="0" role="button" aria-label="Flip card" onclick="toggleFlip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlip(this)}">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div class="q-body">
+            <p class="q-text">What single term combines evaporation and transpiration?</p>
+            <ul class="options">
+              <li class="opt"><span class="opt-mark"></span>Evapotranspiration</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Infiltration</li>
+              <li class="opt"><span class="opt-mark"></span>Collection</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="q-body">
+            <p class="q-text">What single term combines evaporation and transpiration?</p>
+            <ul class="options">
+              <li class="opt correct"><span class="opt-mark"></span>Evapotranspiration</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Infiltration</li>
+              <li class="opt"><span class="opt-mark"></span>Collection</li>
+            </ul>
+            <p class="explanation">Since the two are hard to measure separately in vegetated areas, scientists combine them into "evapotranspiration."</p>
+            <span class="concept-tag">Evapotranspiration</span>
+            <button class="edit-btn">remix card</button>
+            <div class="card-footer"><span>pg. 1</span><span>2/8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="flip-hint">flip it</p>
+    <div class="card-nav"><button class="nav-btn">‹ back</button><span class="progress">02 / 08</span><button class="nav-btn">fwd ›</button></div>
+  </div>
+</main>
+
+<script>
+  function toggleFlip(card) {
+    card.classList.toggle('is-flipped');
+  }
+</script>
+</body>
+</html>

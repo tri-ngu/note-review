@@ -22,7 +22,10 @@
 
 ## Todo
 
-- [ ] Build a prototype flashcard display using a hand-written (not agent-generated) sample Question, to validate the display/UX independent of the generation pipeline before any agent is wired up.
+- [ ] Build a prototype flashcard display using a hand-written (not agent-generated) sample Question, to validate the display/UX independent of the generation pipeline before any agent is wired up. Ten aesthetic directions were explored and narrowed to five, saved as standalone reference files in `assets/card-themes/` (Botanical Field Guide as the default; Neubrutalist Quiz Show, Chalkboard Classroom, Riso Print Zine, and Vintage Postcard kept for later theme-switching) — the prototype build styles the real flashcard component off the default reference, reusing its card mechanics (click-to-flip, radio/checkbox by question type, Next/Prev + progress) rather than redesigning from scratch. Split into three builds next session:
+  - [ ] Build 1 — flashcard display and navigation only (front/back flip, Next/Prev, progress indicator), no editing yet.
+  - [ ] Build 2 — in-place editing from the flashcard view (per DESIGN.md's Editing section: field edits, Save/Cancel, concept rename/reassign).
+  - [ ] Build 3 — theme switching, wiring the four saved reference themes in as selectable alternatives to the default.
 - [ ] Implement and wire the agents (Analyzer/Generator/Verifier), and test their real output — this comes after the above two are settled.
 
 

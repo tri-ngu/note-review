@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Botanical Field Guide — Flashcard Theme (Default)</title>
+<style>
+  /* ============================================================
+     SHARED BASE — reset, page chrome, flip mechanics, layout.
+     Kept identical across every /assets/card-themes/*.html file
+     so themes stay swappable without touching structure.
+     ============================================================ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e9e6df;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  .intro {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 32px;
+  }
+  .intro h1 {
+    font-size: clamp(24px, 4vw, 34px);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .intro p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #55534c;
+    max-width: 640px;
+  }
+  .intro .flag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+
+  .theme {
+    padding: 24px 24px 88px;
+  }
+  .theme-meta {
+    max-width: 900px;
+    margin: 0 auto 36px;
+  }
+  .theme-meta h2 { margin: 0; font-size: 24px; }
+  .theme-meta p { margin: 4px 0 0; font-size: 14px; opacity: 0.75; max-width: 560px; }
+
+  .card-stage {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  /* Flip mechanics — shared skeleton, theme CSS below supplies the paint */
+  .flashcard {
+    width: min(420px, 92vw);
+    height: 460px;
+    perspective: 1800px;
+    cursor: pointer;
+  }
+  .flashcard:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 4px; }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flashcard.is-flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .flip-hint {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .card-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .card-nav .progress { font-variant-numeric: tabular-nums; opacity: 0.7; }
+  .nav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 12px;
+  }
+
+  .q-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .q-text { font-size: 18px; line-height: 1.4; margin: 0; }
+  .options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .opt { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+  .opt-mark { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+  .card-footer { font-size: 12px; opacity: 0.6; display: flex; justify-content: space-between; padding-top: 6px; }
+  .edit-btn { align-self: flex-start; font-size: 12.5px; cursor: pointer; border: none; }
+  .explanation { font-size: 13.5px; line-height: 1.5; opacity: 0.85; }
+  .concept-tag { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; }
+
+  /* ============================================================
+     BOTANICAL FIELD GUIDE
+     Nature-plate aesthetic. Sage/moss palette, italic serif,
+     inline sketch of a leaf marking each card's concept.
+     ============================================================ */
+  .bot { background: #eef0e6; }
+  .bot .theme-meta h2 { font-family: Rockwell, Georgia, serif; color: #3f4f37; }
+  .bot .theme-meta p { color: #5c6650; }
+  .bot .card-face { background: #f4f2e6; border: 1px solid #c8cdb5; box-shadow: 0 22px 36px -22px rgba(40,50,30,0.35); }
+  .bot .q-body { font-family: Constantia, Georgia, serif; color: #34402c; padding: 30px; }
+  .bot .q-text { font-style: italic; font-size: 19px; }
+  .bot .opt-mark { position: relative; }
+  .bot .opt-mark::before { content: ""; display: block; width: 14px; height: 14px; background: #8fa684; clip-path: path('M7 0C7 0 14 5 14 9C14 12 11 14 7 14C3 14 0 12 0 9C0 5 7 0 7 0Z'); opacity: 0.4; }
+  .bot .opt.correct .opt-mark::before { opacity: 1; background: #4b6043; }
+  .bot.is-sa .opt-mark::before { clip-path: none; border-radius: 3px; width: 13px; height: 13px; }
+  .bot .concept-tag { font-family: Rockwell, Georgia, serif; font-style: italic; text-transform: none; letter-spacing: 0; color: #4b6043; font-size: 15px; }
+  .bot .card-footer { color: #6d7660; font-style: italic; }
+  .bot .edit-btn { font-family: Rockwell, Georgia, serif; background: none; color: #4b6043; border: 1px solid #8fa684; padding: 5px 12px; border-radius: 2px; align-self: flex-start; }
+  .bot .flip-hint, .bot .card-nav { font-family: Constantia, Georgia, serif; color: #4b5440; }
+  .bot .nav-btn { color: #4b6043; font-family: Rockwell, Georgia, serif; }
+  .bot .card-face::before {
+    content: "❧";
+    position: absolute; top: 14px; right: 18px;
+    font-size: 20px; color: #8fa684;
+  }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Botanical Field Guide</h1>
+  <p>Nature-plate look — sage and moss, italic serif, a small leaf mark standing in for the bullet. Note Review's flashcard theme reference file.</p>
+  <span class="flag">Default theme</span>
+</div>
+
+<main class="theme bot">
+  <div class="theme-meta">
+    <h2>Botanical Field Guide</h2>
+    <p>Same card mechanics from <code>DESIGN.md</code> — click-to-flip, radio/checkbox by question type, Edit on the back, Next/Prev + progress.</p>
+  </div>
+  <div class="card-stage">
+    <div class="flashcard" tabindex="0" role="button" aria-label="Flip card" onclick="toggleFlip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlip(this)}">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div class="q-body">
+            <p class="q-text">Which term describes plants releasing water vapor from their leaves?</p>
+            <ul class="options">
+              <li class="opt"><span class="opt-mark"></span>Transpiration</li>
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+              <li class="opt"><span class="opt-mark"></span>Infiltration</li>
+              <li class="opt"><span class="opt-mark"></span>Collection</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="q-body">
+            <p class="q-text">Which term describes plants releasing water vapor from their leaves?</p>
+            <ul class="options">
+              <li class="opt correct"><span class="opt-mark"></span>Transpiration</li>
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+              <li class="opt"><span class="opt-mark"></span>Infiltration</li>
+              <li class="opt"><span class="opt-mark"></span>Collection</li>
+            </ul>
+            <p class="explanation">Water absorbed by roots travels up the stem and exits as vapor through stomata — a single tree can transpire hundreds of liters on a hot day.</p>
+            <span class="concept-tag">Transpiration</span>
+            <button class="edit-btn">revise plate</button>
+            <div class="card-footer"><span>leaf 1</span><span>plate 4 of 8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="flip-hint">turn the card over</p>
+    <div class="card-nav"><button class="nav-btn">‹ prior</button><span class="progress">Plate 4 of 8</span><button class="nav-btn">next ›</button></div>
+  </div>
+</main>
+
+<script>
+  function toggleFlip(card) {
+    card.classList.toggle('is-flipped');
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vintage Postcard — Flashcard Theme (Reference)</title>
+<style>
+  /* ============================================================
+     SHARED BASE — reset, page chrome, flip mechanics, layout.
+     Kept identical across every /assets/card-themes/*.html file
+     so themes stay swappable without touching structure.
+     ============================================================ */
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #e9e6df;
+    color: #1a1a1a;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  .intro {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 56px 24px 32px;
+  }
+  .intro h1 {
+    font-size: clamp(24px, 4vw, 34px);
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+  .intro p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: #55534c;
+    max-width: 640px;
+  }
+  .intro .flag {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+
+  .theme {
+    padding: 24px 24px 88px;
+  }
+  .theme-meta {
+    max-width: 900px;
+    margin: 0 auto 36px;
+  }
+  .theme-meta h2 { margin: 0; font-size: 24px; }
+  .theme-meta p { margin: 4px 0 0; font-size: 14px; opacity: 0.75; max-width: 560px; }
+
+  .card-stage {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+
+  /* Flip mechanics — shared skeleton, theme CSS below supplies the paint */
+  .flashcard {
+    width: min(420px, 92vw);
+    height: 460px;
+    perspective: 1800px;
+    cursor: pointer;
+  }
+  .flashcard:focus-visible { outline: 3px solid #1a1a1a; outline-offset: 4px; }
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.7s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flashcard.is-flipped .card-inner { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card-back { transform: rotateY(180deg); }
+
+  .flip-hint {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.5;
+    text-align: center;
+  }
+
+  .card-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .card-nav .progress { font-variant-numeric: tabular-nums; opacity: 0.7; }
+  .nav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 12px;
+  }
+
+  .q-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .q-text { font-size: 18px; line-height: 1.4; margin: 0; }
+  .options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .opt { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
+  .opt-mark { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; }
+  .card-footer { font-size: 12px; opacity: 0.6; display: flex; justify-content: space-between; padding-top: 6px; }
+  .edit-btn { align-self: flex-start; font-size: 12.5px; cursor: pointer; border: none; }
+  .explanation { font-size: 13.5px; line-height: 1.5; opacity: 0.85; }
+  .concept-tag { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.65; }
+
+  /* ============================================================
+     VINTAGE POSTCARD
+     Whimsical/nostalgic. Aged paper, striped airmail border,
+     cursive concept label, postmark ink-stamp on the back.
+     ============================================================ */
+  .vp { background: #d9c9a3; }
+  .vp .theme-meta h2 { font-family: 'Monotype Corsiva', 'Lucida Handwriting', cursive; font-size: 32px; color: #5b4636; }
+  .vp .theme-meta p { color: #6b5842; }
+  .vp .card-face {
+    background: #f1e4c8;
+    border: 7px solid;
+    border-image: repeating-linear-gradient(-45deg, #b33a3a 0 10px, #f1e4c8 10px 20px, #3b6e8f 20px 30px, #f1e4c8 30px 40px) 7;
+    box-shadow: 0 22px 36px -20px rgba(60,40,10,0.4);
+  }
+  .vp .card-face::before {
+    content: "";
+    position: absolute; inset: 14px;
+    border: 1px solid #cdb98c;
+    pointer-events: none;
+  }
+  .vp .q-body { font-family: 'Courier New', monospace; color: #5b4636; padding: 30px; }
+  .vp .q-text { font-size: 17px; }
+  .vp .opt-mark { border: 1.5px solid #5b4636; border-radius: 50%; }
+  .vp.is-sa .opt-mark { border-radius: 2px; }
+  .vp .opt.correct .opt-mark { background: #b33a3a; border-color: #b33a3a; }
+  .vp .opt.correct { color: #b33a3a; }
+  .vp .concept-tag { font-family: 'Monotype Corsiva', 'Lucida Handwriting', cursive; font-size: 20px; color: #3b6e8f; text-transform: none; letter-spacing: 0; }
+  .vp .card-footer { color: #8a7660; }
+  .vp .card-back { position: relative; }
+  .vp .card-back::after {
+    content: "VERIFIED ✓";
+    position: absolute; bottom: 26px; right: 26px;
+    width: 84px; height: 84px; border-radius: 50%;
+    border: 3px double #3b6e8f;
+    color: #3b6e8f;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-family: Consolas, monospace; font-size: 11px;
+    transform: rotate(-14deg);
+    opacity: 0.75;
+  }
+  .vp .edit-btn { font-family: 'Courier New', monospace; background: none; color: #5b4636; border: 1px dashed #5b4636; padding: 5px 12px; align-self: flex-start; }
+  .vp .flip-hint, .vp .card-nav { color: #5b4636; font-family: 'Courier New', monospace; }
+  .vp .nav-btn { color: #b33a3a; font-family: 'Monotype Corsiva', 'Lucida Handwriting', cursive; font-size: 16px; }
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <h1>Vintage Postcard</h1>
+  <p>Aged paper, a striped airmail border, cursive concept label, and a postmark ink-stamp marking the correct answer. Note Review's flashcard theme reference file.</p>
+  <span class="flag">Reference — not the default</span>
+</div>
+
+<main class="theme vp">
+  <div class="theme-meta">
+    <h2>Vintage Postcard</h2>
+    <p>Same card mechanics from <code>DESIGN.md</code> — click-to-flip, radio/checkbox by question type, Edit on the back, Next/Prev + progress.</p>
+  </div>
+  <div class="card-stage">
+    <div class="flashcard" tabindex="0" role="button" aria-label="Flip card" onclick="toggleFlip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlip(this)}">
+      <div class="card-inner">
+        <div class="card-face card-front">
+          <div class="q-body">
+            <p class="q-text">What is often considered the closing (and restarting) stage of the water cycle?</p>
+            <ul class="options">
+              <li class="opt"><span class="opt-mark"></span>Collection</li>
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Precipitation</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card-face card-back">
+          <div class="q-body">
+            <p class="q-text">What is often considered the closing (and restarting) stage of the water cycle?</p>
+            <ul class="options">
+              <li class="opt correct"><span class="opt-mark"></span>Collection</li>
+              <li class="opt"><span class="opt-mark"></span>Evaporation</li>
+              <li class="opt"><span class="opt-mark"></span>Condensation</li>
+              <li class="opt"><span class="opt-mark"></span>Precipitation</li>
+            </ul>
+            <p class="explanation">The water cycle has no true beginning or end — collection is where accumulated water sits before evaporating again.</p>
+            <span class="concept-tag">Greetings from Collection</span>
+            <button class="edit-btn">annotate ✎</button>
+            <div class="card-footer"><span>pg. 3</span><span>no. 8 of 8</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="flip-hint">turn the postcard over</p>
+    <div class="card-nav"><button class="nav-btn">‹ prev</button><span class="progress">Card 8 of 8</span><button class="nav-btn">next ›</button></div>
+  </div>
+</main>
+
+<script>
+  function toggleFlip(card) {
+    card.classList.toggle('is-flipped');
+  }
+</script>
+</body>
+</html>
