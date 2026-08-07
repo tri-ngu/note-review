@@ -15,13 +15,13 @@ Docs this project runs on.
 - **Requirements** (`requirements.md`) — functional scope, v1 behavior contract. Exists.
 - **Design** (`DESIGN.md`) — pipeline architecture, agent responsibilities, data model. Exists.
 - **State** (`PROGRESS.md`) — done/current/todo log, source of truth for what's actually built vs. planned. Exists.
-- **Capacity map** — system limits (upload size cap, Groq rate limit — not yet measured, was ~40 RPM on NIM, see `DESIGN.md`, verify-loop 5-iteration cap, Room's 10-Player cap, etc.). Not yet written.
-- **API contract/schema** — FastAPI endpoint list + request/response shapes (or the auto-generated OpenAPI schema once built). Not yet written. Direction decided: FastAPI backend; SSE streaming on `POST /generate` for pipeline progress; session identified via HTTP-only cookie; Analyzer-checkpoint allocation edits are pure client-side, full edited allocation sent as the `/generate` request body.
+- **Capacity map** — system limits (upload size cap, Groq rate limit, verify-loop 5-iteration cap, Room's 10-Player cap, etc.). Exists — see `DESIGN.md`'s Capacity map section.
+- **API contract/schema** — FastAPI endpoint list + request/response shapes. Exists — see `DESIGN.md`'s API contract section. Direction decided: FastAPI backend; SSE streaming on `POST /generate` for pipeline progress; session identified via HTTP-only cookie; Analyzer-checkpoint allocation edits are pure client-side, full edited allocation sent as the `/generate` request body.
 - **Coding convention** — Not yet written as a standalone doc. Decided: Ruff (lint + format) and mypy for Python; React + TypeScript + Vite for frontend. Testing: pytest required for deterministic backend logic (Pydantic validators, weight reconciliation, snippet checks, SessionStore); live-LLM pipeline covered by a separate manual e2e script, not the required/CI suite; Vitest for frontend.
 - **Parts not to touch**:
   - `.env` — never read contents into chat/commits, never modify values, only report what needs to change.
   - Planning docs (`CONTEXT.md`, `DESIGN.md`, `requirements.md`) — strictly read-only unless explicitly asked to update.
-  - Provider/model choice (Groq, `deepseek-r1-distill-llama-70b`) — never switched unprompted; flag and let Tri decide.
+  - Provider/model choice (Groq, `gpt-oss-120b`) — never switched unprompted; flag and let Tri decide.
 
 ## Definition
 
@@ -49,11 +49,11 @@ A key topic the Analyzer identifies within a Note, assigned a weight (percentage
 *Avoid*: Topic, Section (when referring to this weighted allocation unit specifically)
 
 **Analyzer**:
-The agent that runs once per generation request, before Generation, to identify a Note's Concepts, weigh them, and allocate a question count to each. Its output is reviewed and can be adjusted by the user before Generation proceeds.
+The agent that runs once per generation request, before Generation, to identify a Note's Concepts and weigh them (each Concept's question count is then derived from its weight, not decided by the Analyzer itself — see `DESIGN.md`). Its output is reviewed and can be adjusted by the user before Generation proceeds.
 *Avoid*: Planner
 
 **Generator**:
-The agent that produces Questions from a Note, either for the initial full pass (from the confirmed Concept allocation, one Question per allocated slot) or for a patch pass (rewriting specific Questions, same index, flagged by the Verifier).
+The agent that produces Questions from Note snippets (never the full Note itself), either for the initial full pass (from the confirmed Concept allocation, one Question per allocated slot) or for a patch pass (rewriting specific Questions, same index, flagged by the Verifier).
 
 **Verifier**:
 The agent that checks a generation run's Questions against the Note for correctness and quality, flagging individual Questions with a `keep`/`patch` action (list length is locked before generation starts, so no remove/split action exists). Drives the internal verify loop (capped at 5 iterations) that runs after the Generator's initial pass.

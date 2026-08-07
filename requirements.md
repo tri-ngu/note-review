@@ -35,11 +35,11 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 ### Question generation
 
 - Uses the OpenAI Agents SDK (the orchestration framework) via three agents (Analyzer, Generator, Verifier) plus a self-checking verify loop. The underlying model calls run against Groq's free API (not OpenAI's own billed models) — see `DESIGN.md` for the model comparison and why. Full pipeline detail, agent responsibilities, and data model live in `DESIGN.md` — this section states behavior only.
-- Before generation, an Analyzer pass identifies key concepts in the Note, weighs their relative importance, and allocates a question count per concept. The user reviews and can adjust this concept/weight/count breakdown before generation proceeds.
+- Before generation, an Analyzer pass identifies key concepts in the Note and weighs their relative importance; a question count per concept is then derived from those weights. The user reviews and can adjust this concept/weight/count breakdown before generation proceeds.
 - After the Analyzer's allocation is confirmed, generation runs through an internal generate-then-verify loop (capped at 5 verify iterations) that checks each Question for correctness and quality against the Note before the Question Set is finalized. This loop is internal to one generation request — it is not user-facing regeneration.
 - Generation is one-shot per upload from the user's perspective: no user-triggered regenerating of the whole Question Set or individual Questions in v1. To try again, user re-uploads (or retries after a failure — see below).
 - If user specifies a desired question count, the agent honors it. To hit the count, the agent may generate multiple Questions covering the same underlying point, as long as each is distinct in phrasing, format, or answer choices.
-- If user does not specify a count, the agent decides how many Questions to generate based on how many key points it identifies in the Note.
+- If user does not specify a count, the system decides how many Questions to generate based on how many key points it identifies in the Note.
 - The agent generates as many Questions as the content reasonably supports. If the resulting total is fewer than 5, the response includes an explanation of why (e.g. sparse content).
 - Each Question has exactly 4 answer options.
 - The agent freely decides, per Question, whether it is Multiple-Choice (1 correct option) or Select-All (1–4 correct options) based on what best fits the content. Users cannot control or override this.
