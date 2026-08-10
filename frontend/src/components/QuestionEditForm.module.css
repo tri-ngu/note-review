@@ -1,0 +1,86 @@
+.editForm {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  font-family: Constantia, Georgia, serif;
+  color: #34402c;
+  font-size: 12.5px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-family: Rockwell, Georgia, serif;
+  font-size: 11px;
+  color: #4b6043;
+}
+
+.textarea,
+.textInput,
+.numberInput,
+.optionInput,
+.select {
+  font-family: inherit;
+  font-size: 12.5px;
+  color: #34402c;
+  background: #fbfaf3;
+  border: 1px solid #c8cdb5;
+  border-radius: 2px;
+  padding: 4px 6px;
+  resize: vertical;
+}
+
+.numberInput {
+  width: 70px;
+}
+
+.typeToggle {
+  display: flex;
+  gap: 14px;
+  font-size: 12.5px;
+}
+
+.optionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.optionInput {
+  flex: 1;
+}
+
+.error {
+  margin: 0;
+  color: #a13d3d;
+  font-size: 11.5px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.saveBtn,
+.cancelBtn {
+  font-size: 12.5px;
+  border: 1px solid #8fa684;
+  background: none;
+  color: #4b6043;
+  padding: 5px 12px;
+  border-radius: 2px;
+  font-family: Rockwell, Georgia, serif;
+  cursor: pointer;
+}
+
+.saveBtn {
+  background: #8fa684;
+  color: #f4f2e6;
+}
