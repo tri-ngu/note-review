@@ -380,6 +380,13 @@ def _write_log(
     lines.append(f"- **Rate-limit (429) hits**: {rate_limit_hits}")
     lines.append(f"- **Total tokens**: {total_tokens} ({total_input_tokens} input, {total_output_tokens} output)\n")
 
+    lines.append("### Per-call breakdown\n")
+    lines.append("| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |")
+    lines.append("|---|---|---|---|---|---|")
+    for i, e in enumerate(CALL_LOG, start=1):
+        lines.append(f"| {i} | {e.label} | {e.elapsed_seconds:.1f} | {e.input_tokens} | {e.output_tokens} | {e.total_tokens} |")
+    lines.append("")
+
     lines.append("### Checkpoint allocation\n")
     lines.append("| Concept | Weight % | Question count |")
     lines.append("|---|---|---|")
