@@ -71,6 +71,31 @@ def test_rank_standings_ties_share_rank_and_skip_next():
     assert by_id["p3"]["rank"] == 3  # skips rank 2
 
 
+def test_is_answer_correct_empty_selection_is_never_correct():
+    q = _mc_question(correct_answers=[2], is_select_all=False)
+    assert is_answer_correct(q, []) is False
+
+
+def test_rank_standings_empty_players_returns_empty_list():
+    assert rank_standings({}) == []
+
+
+def test_rank_standings_single_player_is_rank_one():
+    players = {"p1": PlayerState(player_id="p1", nickname="A", score=0)}
+    standings = rank_standings(players)
+    assert standings == [{"player_id": "p1", "nickname": "A", "score": 0, "rank": 1}]
+
+
+def test_rank_standings_all_tied_share_rank_one():
+    players = {
+        "p1": PlayerState(player_id="p1", nickname="A", score=50),
+        "p2": PlayerState(player_id="p2", nickname="B", score=50),
+        "p3": PlayerState(player_id="p3", nickname="C", score=50),
+    }
+    standings = rank_standings(players)
+    assert all(s["rank"] == 1 for s in standings)
+
+
 def test_shuffle_questions_returns_new_object_same_content_different_or_equal_order():
     original = QuestionSet(questions=[_mc_question(question_text=f"q{i}") for i in range(20)])
     shuffled = shuffle_questions(original)

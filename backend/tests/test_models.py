@@ -36,9 +36,32 @@ def test_question_correct_answers_values_must_be_one_to_four():
         Question(**_valid_question_kwargs(correct_answers=[5]))
 
 
+def test_question_correct_answers_rejects_duplicates():
+    with pytest.raises(ValidationError):
+        Question(**_valid_question_kwargs(correct_answers=[1, 1], is_select_all=True))
+
+
 def test_question_accepts_valid_data():
     q = Question(**_valid_question_kwargs())
     assert q.is_select_all is False
+
+
+def test_multiple_choice_must_have_exactly_one_correct_answer():
+    with pytest.raises(ValidationError):
+        Question(**_valid_question_kwargs(is_select_all=False, correct_answers=[1, 2]))
+
+
+def test_select_all_may_have_a_single_correct_answer():
+    # a Select-All question can legitimately have only one correct option
+    # (CONTEXT.md: distinguished by is_select_all, not by len(correct_answers))
+    q = Question(**_valid_question_kwargs(is_select_all=True, correct_answers=[1]))
+    assert q.is_select_all is True
+    assert q.correct_answers == [1]
+
+
+def test_select_all_may_have_all_four_correct_answers():
+    q = Question(**_valid_question_kwargs(is_select_all=True, correct_answers=[1, 2, 3, 4]))
+    assert len(q.correct_answers) == 4
 
 
 def test_question_set_holds_a_list_of_questions():

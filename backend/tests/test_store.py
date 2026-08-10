@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from app.models import Question, QuestionSet
 from app.store import RoomStore, RoomNotFoundError
@@ -105,3 +107,27 @@ async def test_sweep_expired_evicts_abandoned_lobby_by_created_at():
     room = await store.create_room(host_session_id="host-1", question_set=_question_set(), now=0.0)
     evicted = await store.sweep_expired(ttl_seconds=300.0, now=301.0)
     assert evicted == [room.pin]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_create_room_never_assigns_duplicate_pins():
+    store = RoomStore()
+    rooms = await asyncio.gather(
+        *[store.create_room(host_session_id=f"host-{i}", question_set=_question_set()) for i in range(50)]
+    )
+    pins = [room.pin for room in rooms]
+    assert len(pins) == len(set(pins))
+
+
+@pytest.mark.asyncio
+async def test_concurrent_mutations_do_not_lose_updates():
+    store = RoomStore()
+    room = await store.create_room(host_session_id="host-1", question_set=_question_set(), now=0.0)
+
+    async def bump_round():
+        async with store.mutate(room.pin) as mutable_room:
+            mutable_room.current_round += 1
+
+    await asyncio.gather(*[bump_round() for _ in range(20)])
+    fetched = await store.get(room.pin)
+    assert fetched.current_round == 20

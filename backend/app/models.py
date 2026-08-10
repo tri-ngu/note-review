@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Question(BaseModel):
@@ -30,6 +30,13 @@ class Question(BaseModel):
         if any(a not in (1, 2, 3, 4) for a in v):
             raise ValueError("correct_answers values must each be in {1,2,3,4}")
         return v
+
+    @model_validator(mode="after")
+    def multiple_choice_has_exactly_one_correct_answer(self) -> "Question":
+        # CONTEXT.md: "Multiple-Choice Question: a Question with exactly one correct option"
+        if not self.is_select_all and len(self.correct_answers) != 1:
+            raise ValueError("Multiple-Choice questions (is_select_all=False) must have exactly 1 correct answer")
+        return self
 
 
 class QuestionSet(BaseModel):
