@@ -45,6 +45,7 @@ from parsers import (
     parse_generator_patch_output,
     parse_verifier_output,
 )
+from quality_check import run_quality_check
 
 MAX_RETRIES = 3
 VERIFY_LOOP_CAP = 5
@@ -349,7 +350,10 @@ async def main(note_path: Path = NOTE_PATH, concurrent: bool = False) -> None:
     total_elapsed = (datetime.datetime.now() - run_start).total_seconds()
     log(step_log, f"=== Pipeline run end: {len(question_set.questions)} Questions, satisfactory={satisfactory} after {rounds_used} round(s), {total_elapsed:.1f}s total, {call_agent.RATE_LIMIT_HITS} rate-limit hits ===")
 
-    _write_log(run_start, step_log, allocations, question_set, satisfactory, rounds_used, total_elapsed, concurrent, call_agent.RATE_LIMIT_HITS)
+    locked_total = sum(a.question_count for a in allocations)
+    quality_report = run_quality_check(question_set, allocations, note_text, satisfactory, rounds_used, locked_total)
+
+    _write_log(run_start, step_log, allocations, question_set, satisfactory, rounds_used, total_elapsed, concurrent, call_agent.RATE_LIMIT_HITS, quality_report)
 
 
 def _write_log(
@@ -362,6 +366,7 @@ def _write_log(
     total_elapsed: float,
     concurrent: bool,
     rate_limit_hits: int,
+    quality_report: list[str],
 ) -> None:
     lines = [f"\n## Pipeline run {run_start.isoformat(timespec='seconds')} ({'concurrent' if concurrent else 'sequential'})\n"]
     lines.append(f"- **Mode**: {'concurrent (uncapped asyncio.gather)' if concurrent else 'sequential'}")
@@ -392,7 +397,10 @@ def _write_log(
         lines.append(f"- explanation: {q.explanation}")
         lines.append(f"- page {q.page_number}, source_quote: {q.source_quote!r}\n")
 
-    lines.append("---\n")
+    lines.append("### Quality check\n")
+    lines.extend(quality_report)
+
+    lines.append("\n---\n")
 
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write("\n".join(lines))
