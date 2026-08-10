@@ -582,7 +582,7 @@ FastAPI backend, session identified via HTTP-only cookie (set on first `/upload`
 ### `PATCH /concepts/{old_name}`
 - Request: `{ new_name: str }`
 - Response `200`: `{ concept: str, updated_count: int }` — the new label plus how many Questions were affected.
-- Errors: `404` if `old_name` doesn't match any Question's `concept` in the session's `QuestionSet`; `409` if `new_name` already matches a different existing concept (rename is blocked, not merged — see Editing's Concept editing).
+- Errors: `404` if `old_name` doesn't match any Question's `concept` in the session's `QuestionSet`; `409` if `new_name` already matches a different existing concept (rename is blocked, not merged — see Editing's Concept editing). Once a real backend exists, Rename fires this as a second, conditional request rather than folding into the `PATCH /questions/{index}` call.
 
 ### `GET /session`
 Lets the frontend rehydrate on page load without re-uploading — needed for `requirements.md`'s persistence acceptance criteria (closing/reopening the browser mid-server-run must still show existing state).
@@ -633,16 +633,18 @@ From the flashcard display's browse view, at any time after generation, the user
 ### Entry & save
 
 - An "Edit" button lives on the back of the card only (front stays a clean question view; every editable field is already visible on the back). Editing is inline — fields on the card itself become inputs, no modal/overlay.
-- A single "Save" button commits every field changed during that edit session in one action; "Cancel" discards in-progress edits and reverts the card to its last-saved values. (No per-field autosave — fields like `is_select_all` and `correct_answers` need to land together, not independently, to stay valid.)
+- A single "Save" button commits every field changed during that edit session in one action; "Cancel" discards in-progress edits and reverts the card to its last-saved values. (No per-field autosave — fields like `is_select_all` and `correct_answers` need to land together, not independently, to stay valid.) Save is always clickable, never pre-emptively disabled — clicking validates and shows inline field errors (options non-empty, `correct_answers` count vs `is_select_all`, `page_number`, concept collision) while keeping the draft open on failure, rather than gating the button on live validity.
 - This phase has no real backend: Save mutates local frontend state only (matching the shape of the API calls below, but not actually calling them) — edits are lost on reload until a real backend exists.
+- Whole-card flip-to-front and the browse view's Next/Prev/Start Review controls are all disabled while a card is mid-edit, so navigating or flipping away can't silently discard an in-progress draft.
+- Frontend structure: `QuestionSet` lives in App-level state as the single source of truth; a `QuestionEditForm` component holds its own draft state (cloned from the `Question` on Edit, discarded on Cancel) and reports a finished edit upward via one `onSave(updated, renameFrom?)` callback.
 
 ### Editable fields & validation
 
 - `question_text`, `explanation`: free text.
 - `options`: always exactly 4 slots (no add/remove option), each must be non-empty.
 - `correct_answers`: exactly 1 marked correct when `is_select_all` is false (radio, even in edit mode); 1-4 marked correct when true (checkboxes).
-- `is_select_all`: togglable; if toggling would leave the current `correct_answers` count invalid for the new value (e.g. 3 marked correct, toggling to Multiple-Choice), Save is blocked with an inline error until the user manually fixes the selection — no auto-correction.
-- `page_number`: free int entry.
+- `is_select_all`: togglable; if toggling would leave the current `correct_answers` count invalid for the new value (e.g. 3 marked correct, toggling to Multiple-Choice), Save is blocked with an inline error until the user manually fixes the selection — no auto-correction. Edited via an explicit two-option Multiple-Choice/Select-All toggle, not a single ambiguous checkbox.
+- `page_number`: positive integer (>=1); inline error otherwise.
 - `concept`: editable via two separate controls (see below). `source_quote` is never editable (not surfaced in v1 UI at all — see Snippet grounding).
 
 ### Concept editing
@@ -651,14 +653,4 @@ From the flashcard display's browse view, at any time after generation, the user
 
 - **Rename** — a text field showing the current label. Saving a change renames it everywhere: every Question in the Set currently tagged with the old string is updated to the new string. Blocked (error, not merge) if the new name collides with a different concept string already present elsewhere in the Set — renaming and reassigning are different intents, and a same-name collision should not silently merge two concepts.
 - **Reassign** — a dropdown listing the other distinct `concept` values currently present in the Set (derived by scanning `QuestionSet.questions` for unique `concept` strings, excluding the current one). Picking one moves only this single Question to that existing concept; other Questions are unaffected. Disabled when no other concept exists in the Set.
-
-### Implementation notes (Build 3)
-
-Decisions settled during Build 3's grilling, not otherwise implied by the sections above:
-
-- `page_number` is not truly free-form: the edit form requires a positive integer (>=1), inline error otherwise.
 - Rename and Reassign are mutually exclusive within one edit session — editing one clears the other's pending value (last-touched wins), since a Question's `concept` can only end up one way per Save.
-- Save is always clickable, never pre-emptively disabled; clicking validates and shows inline field errors (options non-empty, `correct_answers` count vs `is_select_all`, `page_number`, concept collision) while keeping the draft open on failure, rather than gating the button on live validity.
-- `is_select_all` is edited via an explicit two-option Multiple-Choice/Select-All toggle, not a single ambiguous checkbox.
-- Whole-card flip-to-front and the browse view's Next/Prev/Start Review controls are all disabled while a card is mid-edit, so navigating or flipping away can't silently discard an in-progress draft.
-- Frontend structure: `QuestionSet` lives in App-level state as the single source of truth; a `QuestionEditForm` component holds its own draft state (cloned from the `Question` on Edit, discarded on Cancel) and reports a finished edit upward via one `onSave(updated, renameFrom?)` callback. The API contract above still models Rename as a separate `PATCH /concepts/{old_name}` call — once a real backend exists, Save will need to fire that as a second, conditional request rather than folding it into the `PATCH /questions/{index}` call.
