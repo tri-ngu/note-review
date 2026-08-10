@@ -18,43 +18,13 @@
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
 
-  .intro {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 56px 24px 32px;
-  }
-  .intro h1 {
-    font-size: clamp(24px, 4vw, 34px);
-    margin: 0 0 8px;
-    letter-spacing: -0.01em;
-  }
-  .intro p {
-    font-size: 15px;
-    line-height: 1.6;
-    color: #55534c;
-    max-width: 640px;
-  }
-  .intro .flag {
-    display: inline-block;
-    margin-top: 10px;
-    padding: 4px 10px;
-    background: #1a1a1a;
-    color: #fff;
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    border-radius: 3px;
-  }
-
   .theme {
-    padding: 24px 24px 88px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
   }
-  .theme-meta {
-    max-width: 900px;
-    margin: 0 auto 36px;
-  }
-  .theme-meta h2 { margin: 0; font-size: 24px; }
-  .theme-meta p { margin: 4px 0 0; font-size: 14px; opacity: 0.75; max-width: 560px; }
 
   .card-stage {
     max-width: 900px;
@@ -68,7 +38,7 @@
   /* Flip mechanics — shared skeleton, theme CSS below supplies the paint */
   .flashcard {
     width: min(420px, 92vw);
-    height: 460px;
+    height: 540px;
     perspective: 1800px;
     cursor: pointer;
   }
@@ -115,7 +85,7 @@
     padding: 6px 12px;
   }
 
-  .q-body { flex: 1; padding: 28px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+  .q-body { flex: 1; padding: 22px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
   .q-text { font-size: 18px; line-height: 1.4; margin: 0; }
   .options { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
   .opt { display: flex; align-items: center; gap: 10px; font-size: 14.5px; }
@@ -131,14 +101,12 @@
      shadows, rubber-stamp "CORRECT" mark.
      ============================================================ */
   .nb { background: #ffe347; }
-  .nb .theme-meta h2 { font-family: Bahnschrift, 'Arial Black', Impact, sans-serif; font-size: 30px; text-transform: uppercase; }
-  .nb .theme-meta p { font-weight: 600; }
   .nb .card-face {
     background: #fff;
     border: 4px solid #111;
     box-shadow: 10px 10px 0 #111;
   }
-  .nb .q-body { font-family: 'Segoe UI', sans-serif; padding: 26px; }
+  .nb .q-body { font-family: 'Segoe UI', sans-serif; padding: 22px; }
   .nb .q-text { font-family: Bahnschrift, 'Arial Black', sans-serif; font-weight: 800; font-size: 21px; text-transform: uppercase; }
   .nb .opt { background: #f4f1e8; border: 3px solid #111; padding: 8px 10px; font-weight: 700; }
   .nb .opt-mark { border: 3px solid #111; border-radius: 50%; background: #fff; }
@@ -167,17 +135,7 @@
 </head>
 <body>
 
-<div class="intro">
-  <h1>Neubrutalist Quiz Show</h1>
-  <p>Thick borders, hard offset shadows, a rubber-stamp "CORRECT!" — loud and game-show ready (a nod toward the future Room mode). Note Review's flashcard theme reference file.</p>
-  <span class="flag">Reference — not the default</span>
-</div>
-
 <main class="theme nb">
-  <div class="theme-meta">
-    <h2>Neubrutalist Quiz Show</h2>
-    <p>Same card mechanics from <code>DESIGN.md</code> — click-to-flip, radio/checkbox by question type, Edit on the back, Next/Prev + progress.</p>
-  </div>
   <div class="card-stage">
     <div class="flashcard is-sa" tabindex="0" role="button" aria-label="Flip card" onclick="toggleFlip(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleFlip(this)}">
       <div class="card-inner">
