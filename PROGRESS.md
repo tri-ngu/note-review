@@ -19,14 +19,23 @@
 
 ## Current State
 
-`requirements.md` considered done — scope fully defined (intended user, needs, use cases, non-goals, acceptance criteria, planned-version ordering). `DESIGN.md` rework considered done: Capacity map, API contract, and Extraction sections added; Pipeline/Concurrent generation/Snippet grounding/Weight reconciliation updated for the per-concept-list restructure and the `gpt-oss-120b` model swap; actual Agent prompts (Analyzer/Generator/Verifier) written, iterated, and merged in from `agents.txt`. `CONTEXT.md` and `requirements.md` cross-checked against `DESIGN.md` and brought back in sync. No implementation code exists right now (`src/` was removed). Nothing has been prototyped or wired yet this round — next up is the flashcard-display prototype and wiring the agents.
+`requirements.md` considered done — scope fully defined (intended user, needs, use cases, non-goals, acceptance criteria, planned-version ordering). `DESIGN.md` rework considered done: Capacity map, API contract, and Extraction sections added; Pipeline/Concurrent generation/Snippet grounding/Weight reconciliation updated for the per-concept-list restructure and the `gpt-oss-120b` model swap; actual Agent prompts (Analyzer/Generator/Verifier) written, iterated, and merged in from `agents.txt`. `CONTEXT.md` and `requirements.md` cross-checked against `DESIGN.md` and brought back in sync. Build 1 of the flashcard-display prototype is done (`frontend/`, Vite + React + TS) — display/nav only, no editing, no theme switching. Next up: Build 2 (in-place editing) or Build 3 (theme switching), then wiring the agents.
 
 ## Todo
 
 - [ ] Build a prototype flashcard display using a hand-written (not agent-generated) sample Question, to validate the display/UX independent of the generation pipeline before any agent is wired up. Ten aesthetic directions were explored and narrowed to five, saved as standalone reference files in `assets/card-themes/` (Botanical Field Guide as the default; Neubrutalist Quiz Show, Chalkboard Classroom, Riso Print Zine, and Vintage Postcard kept for later theme-switching) — the prototype build styles the real flashcard component off the default reference, reusing its card mechanics (click-to-flip, radio/checkbox by question type, Next/Prev + progress) rather than redesigning from scratch. Split into three builds next session:
-  - [ ] Build 1 — flashcard display and navigation only (front/back flip, Next/Prev, progress indicator), no editing yet.
-  - [ ] Build 2 — in-place editing from the flashcard view (per DESIGN.md's Editing section: field edits, Save/Cancel, concept rename/reassign).
-  - [ ] Build 3 — theme switching, wiring the four saved reference themes in as selectable alternatives to the default.
+  - [x] Build 1 — flashcard display and navigation only (front/back flip, Next/Prev, progress indicator), no editing yet. Grilled and scoped (2026-08-10): `frontend/` dir, Vite + React + TS + npm; CSS Modules porting `botanical-field-guide.html` near-verbatim; TS types mirroring `DESIGN.md`'s data model; fixture as a `.ts` file (`satisfies QuestionSet`, Claude drafted content grounded in `water_cycle_note.txt`, Tri reviewed before it was saved); components `FlashcardView` + `Flashcard` + a plain concept-trim helper function; Vitest unit test for the concept-trim helper only; disabled placeholder Edit button on the card back. Built and verified (2026-08-10): Claude drove Chrome directly against the dev server — flip, Next/Prev with correct boundary disabling, flip-reset-on-nav (via `key={currentIndex}` remount), radio vs checkbox mark shapes, correct-answer highlighting, concept-trim rule (both delimiter and no-delimiter cases), disabled Edit placeholder all confirmed live; no console errors; `npm test` (6/6) and `tsc --noEmit` clean. `water_cycle_note.txt` also removed from `main` (kept on this branch only) at Tri's request, since it only grounds this branch's fixture. Subgoals:
+    - [x] Scaffold `frontend/` (Vite + React + TS + npm)
+    - [x] TS types (`Question`, `QuestionSet`) mirroring `DESIGN.md`'s data model
+    - [x] Concept-trim helper function + Vitest unit test
+    - [x] Draft fixture content grounded in `water_cycle_note.txt` (Tri reviewed before it was saved to `fixture.ts`)
+    - [x] `Flashcard` component (flip, front/back faces, inert radio/checkbox marks, disabled Edit button) — CSS Module ported from `botanical-field-guide.html`
+    - [x] `FlashcardView` component (current-index state, Next/Prev, "Card X of N", resets flip on nav)
+    - [x] Wire `App` to render `FlashcardView` with the fixture `QuestionSet`
+    - [x] Verify in browser: Claude ran dev server, drove it via Chrome automation, reported results; dev server left running at http://localhost:5555 for Tri to check too
+  - [x] Build 2 — option to start a Review Session (per `CONTEXT.md`/`requirements.md`'s definition), reachable via a "Start Review" button on the flashcard display. Built and verified (2026-08-10).
+  - [ ] Build 3 — in-place editing from the flashcard view (per DESIGN.md's Editing section: field edits, Save/Cancel, concept rename/reassign).
+  - [ ] Build 4 — theme switching, wiring the four saved reference themes in as selectable alternatives to the default.
 - [ ] Implement and wire the agents (Analyzer/Generator/Verifier), and test their real output — this comes after the above two are settled.
 
 

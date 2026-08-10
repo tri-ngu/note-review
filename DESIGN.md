@@ -2,7 +2,7 @@
 
 Structure and architecture for the generation pipeline: turning an uploaded Note (PDF) into a Question Set, and displaying that Question Set for review. See `CONTEXT.md` for canonical terminology and `requirements.md` for functional scope. This doc covers *how* generation works internally and the concrete data model, which `requirements.md` intentionally leaves at the behavioral level.
 
-Out of scope for this doc: the real Review Session (shuffle, scoring, Summary) and the Kahoot-style Room/live-game mode. Both are deferred to later work per `requirements.md`. This phase only covers generation plus a minimal linear flashcard display used to verify the pipeline end-to-end.
+Out of scope for this doc: the Kahoot-style Room/live-game mode, deferred to later work per `requirements.md`. This phase covers generation, a minimal linear flashcard display used to verify the pipeline end-to-end, and the real Review Session (shuffled order, strictly forward-only, per-question immediate feedback, ends in a Summary screen — see `requirements.md`'s Review Session acceptance criteria) reachable via a "Start Review" button on that flashcard display. (This pulls the Review Session forward from originally-deferred "later work" into this phase's scope — same pattern as Editing below.)
 
 ## Pipeline
 
@@ -79,8 +79,9 @@ Freeze QuestionSet
    v
 Linear flashcard display (this phase's UI)
    |
-   v
-In-place editing (any time after generation, from the flashcard view)
+   +--> In-place editing (any time after generation, from the flashcard view)
+   |
+   +--> Review Session (via "Start Review"; shuffled, forward-only, ends in Summary)
 ```
 
 
@@ -541,19 +542,32 @@ Since this phase builds/tests the flashcard view itself, not the generation pipe
 
 ### Card mechanics
 
-- Iterates `QuestionSet.questions` in array index order (generation/freeze order); Next/Prev buttons move between cards — Prev is allowed here (unlike the real Review Session, which is forward-only per `requirements.md`), since this view is a display/editing tool, not a graded pass.
+Applies to the flashcard display's default (browse) view — the Review Session (below) reuses the same `QuestionSet` and card visual language but has its own, graded interaction rules.
+
+- Iterates `QuestionSet.questions` in array index order (generation/freeze order); Next/Prev buttons move between cards — Prev is allowed here (unlike the Review Session, which is forward-only per `requirements.md`), since this view is a display/editing tool, not a graded pass.
 - A "Card X of N" position indicator is shown alongside Next/Prev.
 - Each card flips between front and back on click/tap; navigating to a different card (Next/Prev) always resets that card to its front — never lands mid-flip.
-- Front side: `question_text` + all 4 `options`, rendered with radio controls (Multiple-Choice) or checkboxes (Select-All) per `is_select_all` — visually distinct per `requirements.md`'s rule, but inert: no selection/scoring here, that belongs to the real Review Session's own display.
+- Front side: `question_text` + all 4 `options`, rendered with radio controls (Multiple-Choice) or checkboxes (Select-All) per `is_select_all` — visually distinct per `requirements.md`'s rule, but inert: no selection/scoring here. (The Review Session's front is the one place selection is live — see below.)
 - Back side: `question_text`, all 4 `options` repeated (same radio/checkbox rendering as front) with the correct one(s) visually marked, `explanation`, `page_number`, and `concept` (trimmed for display — see below).
 - **Concept trim rule**: split the `concept` string on its first `:`, `—`, `-`, or `,` (whichever occurs first) and display only the clause before it (e.g. "Blood Vessels: structure, operations and significance" → "Blood Vessels"). If no delimiter is present, display the full untrimmed string — no fallback character cap. Trimming is display-only; the full `concept` string is always what's stored and what any edit (see Editing below) operates on.
-- No shuffling, no scoring, no Summary screen — those belong to the real Review Session, built later per `requirements.md`, reusing this same `QuestionSet`.
+- No shuffling, no scoring, no Summary screen in this view — those belong to the Review Session below, reusing this same `QuestionSet`.
+
+### Review Session
+
+Reachable via a "Start Review" button beneath the browse view's Next/Prev row. Reuses the same `QuestionSet` and the browse view's card visual language (theme, flip animation, option-mark shapes), with `requirements.md`'s Review Session rules:
+
+- Question order is shuffled on entry (Fisher–Yates), independent of the browse view's fixed array order.
+- Forward-only: no Prev. Next is disabled until the current card is submitted.
+- Front side options are live: `is_select_all: false` renders as a radio group (one selectable option), `true` as independent checkboxes — real (visually-hidden) `<input>` elements under the existing `.optMark` styling, not inert.
+- A Submit button is disabled until at least one option is selected. Submitting flips the card to the back and locks it — no changing the selection or flipping back afterward. This is this build's concrete mechanism for `requirements.md`'s "after answering each Question, the user immediately sees correct/incorrect plus the Question's explanation."
+- Back side marks each option by combined correctness + selection state: correct & selected (filled), correct & not selected (outline only), incorrect & selected (filled, distinct color), not-correct & not selected (neutral, unmarked) — on top of the existing explanation/page_number/concept display. No Edit button here — editing (see below) is browse-view-only; a Review Session card is not editable.
+- After the last card is submitted, the Summary screen shows the score (X/Y correct) and the list of missed questions with their explanations, plus a way to restart: a fresh Review Session on the same `QuestionSet`, reshuffled, independent of the previous pass's score — no score history kept across passes, per `requirements.md`.
 
 
 
 ## Editing
 
-From the flashcard view, at any time after generation, the user can edit a Question's fields in place. No adding or removing Questions from the set via the UI in v1 — the array stays the size it was frozen at. (This pulls "manual editing" forward from `requirements.md`'s v1.x-deferred list into v1 scope — see that file's changelog.)
+From the flashcard display's browse view, at any time after generation, the user can edit a Question's fields in place. Not available in a Review Session — its cards carry no Edit button (see Review Session above). No adding or removing Questions from the set via the UI in v1 — the array stays the size it was frozen at. (This pulls "manual editing" forward from `requirements.md`'s v1.x-deferred list into v1 scope — see that file's changelog.)
 
 ### Entry & save
 
