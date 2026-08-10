@@ -51,11 +51,11 @@ export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: 
   return (
     <div
       className={cardClass}
-      tabIndex={0}
-      role="button"
-      aria-label="Flip card"
-      onClick={toggleFlip}
-      onKeyDown={handleKeyDown}
+      tabIndex={isEditing ? undefined : 0}
+      role={isEditing ? undefined : 'button'}
+      aria-label={isEditing ? undefined : 'Flip card'}
+      onClick={isEditing ? undefined : toggleFlip}
+      onKeyDown={isEditing ? undefined : handleKeyDown}
     >
       <div className={styles.cardInner}>
         <div className={`${styles.cardFace} ${styles.cardFront}`}>

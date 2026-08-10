@@ -590,3 +590,14 @@ From the flashcard display's browse view, at any time after generation, the user
 
 - **Rename** — a text field showing the current label. Saving a change renames it everywhere: every Question in the Set currently tagged with the old string is updated to the new string. Blocked (error, not merge) if the new name collides with a different concept string already present elsewhere in the Set — renaming and reassigning are different intents, and a same-name collision should not silently merge two concepts.
 - **Reassign** — a dropdown listing the other distinct `concept` values currently present in the Set (derived by scanning `QuestionSet.questions` for unique `concept` strings, excluding the current one). Picking one moves only this single Question to that existing concept; other Questions are unaffected. Disabled when no other concept exists in the Set.
+
+### Implementation notes (Build 3)
+
+Decisions settled during Build 3's grilling, not otherwise implied by the sections above:
+
+- `page_number` is not truly free-form: the edit form requires a positive integer (>=1), inline error otherwise.
+- Rename and Reassign are mutually exclusive within one edit session — editing one clears the other's pending value (last-touched wins), since a Question's `concept` can only end up one way per Save.
+- Save is always clickable, never pre-emptively disabled; clicking validates and shows inline field errors (options non-empty, `correct_answers` count vs `is_select_all`, `page_number`, concept collision) while keeping the draft open on failure, rather than gating the button on live validity.
+- `is_select_all` is edited via an explicit two-option Multiple-Choice/Select-All toggle, not a single ambiguous checkbox.
+- Whole-card flip-to-front and the browse view's Next/Prev/Start Review controls are all disabled while a card is mid-edit, so navigating or flipping away can't silently discard an in-progress draft.
+- Frontend structure: `QuestionSet` lives in App-level state as the single source of truth; a `QuestionEditForm` component holds its own draft state (cloned from the `Question` on Edit, discarded on Cancel) and reports a finished edit upward via one `onSave(updated, renameFrom?)` callback. The API contract above still models Rename as a separate `PATCH /concepts/{old_name}` call — once a real backend exists, Save will need to fire that as a second, conditional request rather than folding it into the `PATCH /questions/{index}` call.
