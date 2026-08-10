@@ -45,7 +45,7 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 - The agent freely decides, per Question, whether it is Multiple-Choice (1 correct option) or Select-All (1–4 correct options) based on what best fits the content. Users cannot control or override this.
 - Multiple-Choice Questions render with radio-button controls; Select-All Questions render with checkbox controls, so the type is visually obvious independent of how many options are actually correct.
 - Each Question includes a short explanation (grounded in the Note's content and citing the Note page it's drawn from) used for post-answer feedback.
-- After generation, the user can edit any Question's text, options, correct answers, or explanation in place from the flashcard/review view, at any time. No adding or removing Questions from the set in v1.
+- After generation, the user can edit any Question's text, options, correct answers, or explanation in place from the flashcard display (browse view), at any time. No adding or removing Questions from the set in v1.
 
 
 
@@ -124,7 +124,7 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 - Given a completed Review Session, when the user chooses to review again, then a new session starts on the same Question Set, reshuffled, independent of the previous pass's score.
 
 ### Editing
-- Given a generated Question Set, when the user edits a Question's text, options, correct answers, or explanation from the flashcard/review view, then the change is saved and reflected immediately, without regenerating any other Question.
+- Given a generated Question Set, when the user edits a Question's text, options, correct answers, or explanation from the flashcard display (browse view), then the change is saved and reflected immediately, without regenerating any other Question.
 - Given an edit, then no Question can be added to or removed from the Question Set — length stays fixed at the frozen size.
 
 ### Error handling

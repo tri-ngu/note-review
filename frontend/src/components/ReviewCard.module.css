@@ -1,0 +1,194 @@
+.card {
+  width: min(420px, 92vw);
+  height: 540px;
+  perspective: 1800px;
+}
+
+.cardInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.card.isFlipped .cardInner {
+  transform: rotateY(180deg);
+}
+
+.cardFace {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f4f2e6;
+  border: 1px solid #c8cdb5;
+  box-shadow: 0 22px 36px -22px rgba(40, 50, 30, 0.35);
+}
+.cardFace::before {
+  content: '❧';
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 20px;
+  color: #8fa684;
+}
+.cardBack {
+  transform: rotateY(180deg);
+}
+
+.qBody {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  font-family: Constantia, Georgia, serif;
+  color: #34402c;
+}
+.qText {
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.options {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+}
+.optLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  cursor: pointer;
+}
+.optInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.optInput:focus-visible + .optMark {
+  outline: 2px solid #1a1a1a;
+  outline-offset: 2px;
+}
+.optMark {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+.optMark::before {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  background: #8fa684;
+  clip-path: path('M7 0C7 0 14 5 14 9C14 12 11 14 7 14C3 14 0 12 0 9C0 5 7 0 7 0Z');
+  opacity: 0.4;
+}
+.isSa .optMark::before {
+  clip-path: none;
+  border-radius: 3px;
+  width: 13px;
+  height: 13px;
+}
+.optMark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  line-height: 22px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Front (live) selection state, driven by the hidden input's :checked */
+.optInput:checked + .optMark::before {
+  opacity: 1;
+  background: #4b6043;
+}
+
+/* Back (submitted) correctness + selection states */
+.opt.correct .optMark::before {
+  opacity: 1;
+  background: #4b6043;
+}
+.opt.correct .optMark::after {
+  content: '✓';
+  color: #f4f2e6;
+}
+.opt.correctMissed .optMark::after {
+  content: '✓';
+  color: #4b6043;
+}
+.opt.wrongSelected .optMark::before {
+  opacity: 1;
+  background: #a4443a;
+}
+.opt.wrongSelected .optMark::after {
+  content: '✗';
+  color: #f4f2e6;
+}
+
+.cardFooter {
+  font-size: 12px;
+  padding-top: 6px;
+  color: #6d7660;
+  font-style: italic;
+}
+
+.explanation {
+  font-size: 13.5px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.conceptTag {
+  font-family: Rockwell, Georgia, serif;
+  font-style: italic;
+  color: #4b6043;
+  font-size: 15px;
+}
+
+.submitBtn {
+  align-self: flex-start;
+  font-size: 12.5px;
+  border: 1px solid #4b6043;
+  background: #4b6043;
+  color: #f4f2e6;
+  padding: 7px 16px;
+  border-radius: 2px;
+  font-family: Rockwell, Georgia, serif;
+  cursor: pointer;
+  margin-top: auto;
+}
+.submitBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+  background: #8fa684;
+  border-color: #8fa684;
+}
