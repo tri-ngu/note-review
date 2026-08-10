@@ -2,7 +2,7 @@
 
 Structure and architecture for the generation pipeline: turning an uploaded Note (PDF) into a Question Set, and displaying that Question Set for review. See `CONTEXT.md` for canonical terminology and `requirements.md` for functional scope. This doc covers *how* generation works internally and the concrete data model, which `requirements.md` intentionally leaves at the behavioral level.
 
-Out of scope for this doc: the real Review Session (shuffle, scoring, Summary) and the Kahoot-style Room/live-game mode. Both are deferred to later work per `requirements.md`. This phase only covers generation plus a minimal linear flashcard display used to verify the pipeline end-to-end.
+Out of scope for this doc: the Kahoot-style Room/live-game mode, deferred to later work per `requirements.md`. This phase covers generation, a minimal linear flashcard display used to verify the pipeline end-to-end, and the real Review Session (shuffled order, strictly forward-only, per-question immediate feedback, ends in a Summary screen — see `requirements.md`'s Review Session acceptance criteria) reachable via a "Start Review" button on that flashcard display. (This pulls the Review Session forward from originally-deferred "later work" into this phase's scope — same pattern as Editing below.)
 
 ## Pipeline
 
@@ -79,8 +79,9 @@ Freeze QuestionSet
    v
 Linear flashcard display (this phase's UI)
    |
-   v
-In-place editing (any time after generation, from the flashcard view)
+   +--> In-place editing (any time after generation, from the flashcard view)
+   |
+   +--> Review Session (via "Start Review"; shuffled, forward-only, ends in Summary)
 ```
 
 
@@ -528,28 +529,51 @@ Lets the frontend rehydrate on page load without re-uploading — needed for `re
 
 ## Flashcard display (this phase)
 
-Minimal linear view to prove the pipeline works end-to-end — **not** the real Review Session.
+Minimal linear view to prove the pipeline works end-to-end — **not** the real Review Session. This phase is also proven against a hand-written fixture instead of a live pipeline run (see Test fixture below).
+
+### Test fixture
+
+Since this phase builds/tests the flashcard view itself, not the generation pipeline, its `QuestionSet` comes from a hand-written JSON fixture, not a live Analyzer/Generator/Verifier run:
+
+- Fixture JSON mirrors the `QuestionSet`/`Question` Pydantic models exactly (same field names, same shapes) — validated by loading it through those same models before use, catching hand-typing mistakes (missing field, wrong option count, etc.) rather than trusting manual review alone.
+- Loaded directly by the frontend (plain import), no mock server/endpoint involved — API integration is separate, later work.
+- Content grounded in `water_cycle_note.txt` (already in repo). Covers every rendering/edit case the view needs to prove: ~6-8 Questions, mixing a standard Multiple-Choice, a Select-All with 2-3 correct, a Select-All with all 4 correct, a Select-All edge case with only 1 correct (checkbox control despite the single-answer count), 2-3 distinct `concept` values, varying `page_number`s, and at least one Question with longer `question_text`/`explanation` to test wrap/overflow.
+- Edits made against this fixture (see Editing below) only mutate local frontend state — nothing persists past a reload until a real backend exists.
 
 ### Card mechanics
 
-- Iterates `QuestionSet.questions` in array index order (generation/freeze order); Next/Prev buttons move between cards — Prev is allowed here (unlike the real Review Session, which is forward-only per `requirements.md`), since this view is a display/editing tool, not a graded pass.
+Applies to the flashcard display's default (browse) view — the Review Session (below) reuses the same `QuestionSet` and card visual language but has its own, graded interaction rules.
+
+- Iterates `QuestionSet.questions` in array index order (generation/freeze order); Next/Prev buttons move between cards — Prev is allowed here (unlike the Review Session, which is forward-only per `requirements.md`), since this view is a display/editing tool, not a graded pass.
 - A "Card X of N" position indicator is shown alongside Next/Prev.
 - Each card flips between front and back on click/tap; navigating to a different card (Next/Prev) always resets that card to its front — never lands mid-flip.
-- Front side: `question_text` + all 4 `options`, rendered with radio controls (Multiple-Choice) or checkboxes (Select-All) per `is_select_all` — visually distinct per `requirements.md`'s rule, but inert: no selection/scoring here, that belongs to the real Review Session's own display.
+- Front side: `question_text` + all 4 `options`, rendered with radio controls (Multiple-Choice) or checkboxes (Select-All) per `is_select_all` — visually distinct per `requirements.md`'s rule, but inert: no selection/scoring here. (The Review Session's front is the one place selection is live — see below.)
 - Back side: `question_text`, all 4 `options` repeated (same radio/checkbox rendering as front) with the correct one(s) visually marked, `explanation`, `page_number`, and `concept` (trimmed for display — see below).
 - **Concept trim rule**: split the `concept` string on its first `:`, `—`, `-`, or `,` (whichever occurs first) and display only the clause before it (e.g. "Blood Vessels: structure, operations and significance" → "Blood Vessels"). If no delimiter is present, display the full untrimmed string — no fallback character cap. Trimming is display-only; the full `concept` string is always what's stored and what any edit (see Editing below) operates on.
-- No shuffling, no scoring, no Summary screen — those belong to the real Review Session, built later per `requirements.md`, reusing this same `QuestionSet`.
+- No shuffling, no scoring, no Summary screen in this view — those belong to the Review Session below, reusing this same `QuestionSet`.
+
+### Review Session
+
+Reachable via a "Start Review" button beneath the browse view's Next/Prev row. Reuses the same `QuestionSet` and the browse view's card visual language (theme, flip animation, option-mark shapes), with `requirements.md`'s Review Session rules:
+
+- Question order is shuffled on entry (Fisher–Yates), independent of the browse view's fixed array order.
+- Forward-only: no Prev. Next is disabled until the current card is submitted.
+- Front side options are live: `is_select_all: false` renders as a radio group (one selectable option), `true` as independent checkboxes — real (visually-hidden) `<input>` elements under the existing `.optMark` styling, not inert.
+- A Submit button is disabled until at least one option is selected. Submitting flips the card to the back and locks it — no changing the selection or flipping back afterward. This is this build's concrete mechanism for `requirements.md`'s "after answering each Question, the user immediately sees correct/incorrect plus the Question's explanation."
+- Back side marks each option by combined correctness + selection state: correct & selected (filled), correct & not selected (outline only), incorrect & selected (filled, distinct color), not-correct & not selected (neutral, unmarked) — on top of the existing explanation/page_number/concept display. No Edit button here — editing (see below) is browse-view-only; a Review Session card is not editable.
+- After the last card is submitted, the Summary screen shows the score (X/Y correct) and the list of missed questions with their explanations, plus a way to restart: a fresh Review Session on the same `QuestionSet`, reshuffled, independent of the previous pass's score — no score history kept across passes, per `requirements.md`.
 
 
 
 ## Editing
 
-From the flashcard view, at any time after generation, the user can edit a Question's fields in place. No adding or removing Questions from the set via the UI in v1 — the array stays the size it was frozen at. (This pulls "manual editing" forward from `requirements.md`'s v1.x-deferred list into v1 scope — see that file's changelog.)
+From the flashcard display's browse view, at any time after generation, the user can edit a Question's fields in place. Not available in a Review Session — its cards carry no Edit button (see Review Session above). No adding or removing Questions from the set via the UI in v1 — the array stays the size it was frozen at. (This pulls "manual editing" forward from `requirements.md`'s v1.x-deferred list into v1 scope — see that file's changelog.)
 
 ### Entry & save
 
 - An "Edit" button lives on the back of the card only (front stays a clean question view; every editable field is already visible on the back). Editing is inline — fields on the card itself become inputs, no modal/overlay.
-- A single "Save" button commits every field changed during that edit session in one action (via `PATCH /questions/{index}`, or `PATCH /concepts/{old_name}` for a concept rename); "Cancel" discards in-progress edits and reverts the card to its last-saved values. (No per-field autosave — fields like `is_select_all` and `correct_answers` need to land together, not independently, to stay valid.)
+- A single "Save" button commits every field changed during that edit session in one action; "Cancel" discards in-progress edits and reverts the card to its last-saved values. (No per-field autosave — fields like `is_select_all` and `correct_answers` need to land together, not independently, to stay valid.)
+- This phase has no real backend: Save mutates local frontend state only (matching the shape of the API calls below, but not actually calling them) — edits are lost on reload until a real backend exists.
 
 ### Editable fields & validation
 
@@ -566,3 +590,14 @@ From the flashcard view, at any time after generation, the user can edit a Quest
 
 - **Rename** — a text field showing the current label. Saving a change renames it everywhere: every Question in the Set currently tagged with the old string is updated to the new string. Blocked (error, not merge) if the new name collides with a different concept string already present elsewhere in the Set — renaming and reassigning are different intents, and a same-name collision should not silently merge two concepts.
 - **Reassign** — a dropdown listing the other distinct `concept` values currently present in the Set (derived by scanning `QuestionSet.questions` for unique `concept` strings, excluding the current one). Picking one moves only this single Question to that existing concept; other Questions are unaffected. Disabled when no other concept exists in the Set.
+
+### Implementation notes (Build 3)
+
+Decisions settled during Build 3's grilling, not otherwise implied by the sections above:
+
+- `page_number` is not truly free-form: the edit form requires a positive integer (>=1), inline error otherwise.
+- Rename and Reassign are mutually exclusive within one edit session — editing one clears the other's pending value (last-touched wins), since a Question's `concept` can only end up one way per Save.
+- Save is always clickable, never pre-emptively disabled; clicking validates and shows inline field errors (options non-empty, `correct_answers` count vs `is_select_all`, `page_number`, concept collision) while keeping the draft open on failure, rather than gating the button on live validity.
+- `is_select_all` is edited via an explicit two-option Multiple-Choice/Select-All toggle, not a single ambiguous checkbox.
+- Whole-card flip-to-front and the browse view's Next/Prev/Start Review controls are all disabled while a card is mid-edit, so navigating or flipping away can't silently discard an in-progress draft.
+- Frontend structure: `QuestionSet` lives in App-level state as the single source of truth; a `QuestionEditForm` component holds its own draft state (cloned from the `Question` on Edit, discarded on Cancel) and reports a finished edit upward via one `onSave(updated, renameFrom?)` callback. The API contract above still models Rename as a separate `PATCH /concepts/{old_name}` call — once a real backend exists, Save will need to fire that as a second, conditional request rather than folding it into the `PATCH /questions/{index}` call.
