@@ -389,8 +389,17 @@ async def call_agent_async(agent: Agent, prompt: str, label: str, max_retries: i
 
 
 def _parse_retry_after_seconds(error_text: str) -> float | None:
-    m = re.search(r"try again in ([\d.]+)s", error_text)
-    return float(m.group(1)) + 0.5 if m else None
+    """Groq formats this two ways depending on wait length: "31.07s" for
+    short (TPM-level) waits, "5m48.624s" for longer (TPD-level) waits — the
+    original regex only handled the first, so a daily-cap 429 silently fell
+    back to the tiny default backoff and burned through all retries in
+    seconds instead of recognizing it needed minutes."""
+    m = re.search(r"try again in (?:(\d+)h)?(?:(\d+)m)?([\d.]+)s", error_text)
+    if not m:
+        return None
+    hours, minutes, seconds = m.groups()
+    total = float(seconds) + (int(minutes or 0) * 60) + (int(hours or 0) * 3600)
+    return total + 0.5
 
 
 def call_agent(agent: Agent, prompt: str, label: str) -> str:
