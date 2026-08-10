@@ -158,9 +158,9 @@ Net effect: the Note's full text is read by exactly one agent — the Verifier, 
 
 **Question count derivation**: per-concept `question_count` is `round(weight_percentage / 100 * total)`, then reconciled deterministically in Python — largest-remainder method (concepts with the biggest rounding remainder each get +1, in order, until counts sum exactly to `total`) — same drift-correction philosophy as weights above, not left to agent judgment. Applies whether `total` is user-specified or Python-chosen (the Analyzer never decides or sees the total — see Agents above).
 
-**Provider**: the `openai-agents` framework itself is unchanged, but model calls run against [Groq](https://groq.com)'s free OpenAI-compatible API (`https://api.groq.com/openai/v1`) instead of OpenAI's own billed models — wired via `set_default_openai_client()` + `set_default_openai_api("chat_completions")` + `set_tracing_disabled(True)`. **Flagged, not yet re-verified**: the NIM wiring needed each `Agent`'s `model=` wrapped in `OpenAIChatCompletionsModel` because NIM's `vendor/model` slugs contain a `/` the SDK misparsed as a `litellm/`-style provider prefix. Groq's slugs (e.g. `gpt-oss-120b`) have no `/`, so that specific wrapping is likely unnecessary — still unconfirmed against a live Agents-SDK call (a raw HTTP call to Groq's endpoint was confirmed working during this doc's rework, see Model below, but that doesn't exercise the SDK's own model-string parsing).
+**Provider**: the `openai-agents` framework itself is unchanged, but model calls run against [Groq](https://groq.com)'s free OpenAI-compatible API (`https://api.groq.com/openai/v1`) instead of OpenAI's own billed models — wired via `set_default_openai_client()` + `set_default_openai_api("chat_completions")` + `set_tracing_disabled(True)`. **Confirmed (agent-testing branch, live Agents-SDK call)**: Groq's actual slug for this model is `openai/gpt-oss-120b` (vendor-prefixed — a live `GET /v1/models` check returned `openai/gpt-oss-120b`, not the bare `gpt-oss-120b` previously assumed here). The `/` in that slug hits the exact same SDK misparsing this section previously flagged only for NIM: the Agents SDK treats it as a `litellm/`-style provider prefix and silently strips it, so an unwrapped `Agent(model="openai/gpt-oss-120b")` sends bare `gpt-oss-120b` to Groq and gets back HTTP 404 `model_not_found`. Each `Agent`'s `model=` must be wrapped in `OpenAIChatCompletionsModel(model="openai/gpt-oss-120b", openai_client=...)`, same as the NIM wiring — this section's prior guess that Groq's slugs were `/`-free and wouldn't need it was wrong.
 
-**Model**: `gpt-oss-120b`, replacing `deepseek-r1-distill-llama-70b` — confirmed via a live dummy call during this doc's rework that Groq has decommissioned `deepseek-r1-distill-llama-70b` (HTTP 400, `model_decommissioned`); it's no longer usable regardless of provider preference. `gpt-oss-120b` is itself a reasoning model (OpenAI's open-weight release, harmony response format with a separate reasoning/analysis channel) — the same chain-of-thought-vs-structured-`output_type` concern flagged for the old model still applies, just not yet re-tested against this specific model/format. Prior empirical findings (call speed, `correct_answers` handling, the bundled-multiple-facts-in-one-option flaw) were measured against `deepseek-v4-pro` on NIM and don't carry over to `gpt-oss-120b` either. Not tracked as active work — flagged for whenever it becomes relevant.
+**Model**: `openai/gpt-oss-120b` (Groq's current vendor-prefixed slug — see Provider above), replacing `deepseek-r1-distill-llama-70b` — confirmed via a live dummy call during this doc's rework that Groq has decommissioned `deepseek-r1-distill-llama-70b` (HTTP 400, `model_decommissioned`); it's no longer usable regardless of provider preference. `gpt-oss-120b` is itself a reasoning model (OpenAI's open-weight release, harmony response format with a separate reasoning/analysis channel) — the same chain-of-thought-vs-structured-`output_type` concern flagged for the old model still applies, just not yet re-tested against this specific model/format. Prior empirical findings (call speed, `correct_answers` handling, the bundled-multiple-facts-in-one-option flaw) were measured against `deepseek-v4-pro` on NIM and don't carry over to `gpt-oss-120b` either. Not tracked as active work — flagged for whenever it becomes relevant.
 
 **Rate limits**: see Capacity map above for `gpt-oss-120b`'s current Groq free-tier numbers.
 
@@ -305,6 +305,11 @@ Concept: {concept}
 Flagged Questions (with the Verifier's critique and fix snippets):
 {for each flagged index: index, current Question fields, critique, snippets}
 
+Each flagged Question's existing source_quote is shown above for context
+only — it is what the flag is critiquing, not a valid source for your
+replacement. Do not reuse it in your output unless it also happens to
+appear verbatim among that flag's fix snippets.
+
 For each flagged index, output a full replacement Question block — all
 fields, not just the changed ones — prefixed with the index it replaces:
 - index: the global index (int) of the Question this block replaces — must
@@ -323,19 +328,23 @@ fields, not just the changed ones — prefixed with the index it replaces:
   correct, using only the given snippets
 - page_number: the page number (int) the grounding snippet came from
 - source_quote: the exact snippet text (or relevant portion), as a quoted
-  string, copied verbatim from a provided snippet — not paraphrased
+  string, copied verbatim from that flag's fix snippets — NOT from the
+  Question's pre-fix source_quote shown above for context
 
 Do not touch Questions that weren't flagged — they are not in your input
 and must not appear in your output.
 
 Quality bar:
-- Every fact used must trace to a provided snippet — never invent content,
-  never use outside/general knowledge even if believed true
+- Every fact used must trace to a provided fix snippet — never invent
+  content, never use outside/general knowledge even if believed true, and
+  never fall back to the pre-fix Question's own source_quote/explanation
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
 - Don't bundle multiple distinct facts into a single option
-- source_quote must be an exact substring of one of the provided snippets
+- source_quote must be an exact substring of one of that flag's fix
+  snippets — copying the pre-fix source_quote unchanged is only acceptable
+  if it also appears verbatim among the fix snippets
 
 Output format:
 - Separate each Question's block from the next with at least 2 newlines
@@ -397,7 +406,13 @@ Quality bar, checked against the Note (verbatim from Verify loop detail):
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
 - is_select_all matches the intended semantics (deliberate choice, not
-  count-inferred)
+  count-inferred). A Select-All Question (is_select_all: true) legitimately
+  has anywhere from 1 to all 4 options correct — a single correct answer
+  does NOT by itself mean is_select_all should be false. Only flag
+  is_select_all if the question's own phrasing/framing doesn't fit its
+  value (e.g. stem clearly invites a single choice but is_select_all is
+  true, or stem clearly invites multiple selection but is_select_all is
+  false) — never flag it purely because len(correct_answers) is 1
 - No ambiguous or multiple-valid-reading phrasing
 - explanation actually explains the correct answer using Note content
 - Question actually matches its assigned concept
@@ -429,6 +444,52 @@ satisfactory: false
 
 ```
 Python parses each block into a `VerifierIssue` (or a no-op for "keep") plus the trailing `satisfactory` line — not an SDK-level structured `output_type` (see Agents section above). Do not flag Questions outside your assigned index set. Every snippet you extract must be an exact substring of the Note text above.
+
+## Expected behavior
+
+Behavioral contracts for each agent's call — properties any valid output must have — plus one concrete worked example per agent, grounded in `water_cycle_note.txt`. Written for the `agent-testing` branch (isolated per-call testing before pipeline wiring); see `agent-test-log.md` for actual runs against these.
+
+### Analyzer
+
+**General contract:**
+- Every `weight_percentage` sums to ~100 across Concepts in one call (drift beyond ±10 is a genuine Analyzer mistake, not rounding noise — see Weight reconciliation above).
+- Concepts are non-overlapping — none re-describes another's topic.
+- Every snippet is an exact (whitespace-normalized) substring of the given Note text — a fabricated or paraphrased quote is a contract violation regardless of whether it's factually true.
+- A sparse Note (few distinct ideas) yields few Concepts — the Analyzer must not invent Concepts to pad coverage.
+- Concepts collectively cover the Note's actual content spread — a multi-page Note shouldn't come back with every Concept's snippets drawn from only one page while other pages' content goes unrepresented.
+
+**Worked example** — given `water_cycle_note.txt` (3 pages: evaporation/transpiration/runoff on Page 1, condensation/precipitation on Page 2, precipitation forms/infiltration/groundwater/collection on Page 3), a reasonable Analyzer output partitions into roughly 4-6 Concepts spanning all three pages — e.g. "Evaporation and Transpiration" (Page 1), "Condensation and Precipitation" (Page 2-3), "Runoff and Groundwater Storage" (Page 1, 3), "Collection" (Page 3). Concept boundaries/count can reasonably vary (this grouping vs. finer-grained per-process Concepts are both defensible); the contract is non-overlap plus full-Note coverage, not an exact concept count or wording match.
+
+### Generator — initial pass
+
+**General contract:**
+- Output has exactly `question_count` Questions.
+- Every `options` list has exactly 4 entries; `correct_answers` has 1-4 entries, each a valid option position.
+- `source_quote` is an exact substring of one of the *given snippets* — never the full Note, since this call never sees it.
+- No fact used traces outside the given snippets — outside/general knowledge is a contract violation even where it happens to be true.
+- When `question_count` exceeds what the snippets can distinctly support, Questions vary in phrasing/format/tested detail rather than repeating near-identically or fabricating new facts to fill the count.
+
+**Worked example** — given concept "Evaporation and Transpiration" and snippet `["The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers, which together account for the vast majority of water entering the atmosphere." : 1]`, a valid Question: `question_text: "What provides the energy needed for evaporation?"`, correct option "The sun's heat", `page_number: 1`, `source_quote` copied verbatim from that snippet (not paraphrased).
+
+### Generator — patch pass
+
+**General contract:**
+- Output contains exactly the flagged indices, each exactly once — no extra Questions, none dropped, no untouched Question re-emitted.
+- The critique is actually addressed by the new Question content — not just cosmetic rewording carrying the same flaw.
+- `source_quote` in the patched Question is an exact substring of the *new fix snippets* provided for that flag — not the Question's original (possibly-flawed) `source_quote`.
+
+**Worked example** — flagging a Question whose explanation only lists precipitation's forms without saying what determines which form occurs, given fix snippet `["Rain is the most common form of precipitation in warmer climates, while snow and sleet occur when temperatures near the ground are at or below freezing." : 3]`, the patched `explanation` should explain the temperature-dependence, not just restate the list of forms.
+
+### Verifier
+
+**General contract:**
+- Every given index appears in the output exactly once.
+- `action: "patch"` requires non-empty `critique` and non-empty `snippets`; `action: "keep"` requires `critique: ""` and `snippets: []`.
+- `satisfactory: true` iff every Question in the call was `"keep"`.
+- A Question gets `action: "patch"` if any of: `source_quote` isn't a real, verbatim, on-`page_number` quote; the quote doesn't actually support `correct_answers`/`explanation`; distractors are implausible or near-duplicates of each other; `is_select_all` doesn't match what the grounding actually supports; phrasing admits more than one valid reading; or `concept` doesn't match the Question's actual topic.
+- A Question passing all of the above gets `action: "keep"`, even if a different, equally-valid Question could have been written instead — the Verifier judges the given Question as written, not whether it's the best possible Question for that Concept.
+
+**Worked example** — given Note text including `"The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers..." (Page 1)` and a Question claiming `source_quote: "NASA satellite data confirms 90 percent of atmospheric moisture originates from ocean evaporation."`, expect `action: "patch"` with a critique naming the fabricated quote — that sentence never appears in the Note (see `agent-test-log.md`'s `verifier-evaporation-mixed` case).
 
 ## Data model
 
@@ -477,7 +538,7 @@ Note text itself: a plain `str`, extracted from the PDF once at upload, held in 
 
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
-- `is_select_all` matches the intended semantics (deliberate choice, not count-inferred)
+- `is_select_all` matches the intended semantics (deliberate choice, not count-inferred). A Select-All Question (`is_select_all: true`) legitimately has anywhere from 1 to all 4 options correct — a single correct answer does NOT by itself mean `is_select_all` should be `false`. Only flag `is_select_all` if the question's own phrasing/framing doesn't fit its value — never flag it purely because `len(correct_answers)` is 1
 - No ambiguous or multiple-valid-reading phrasing
 - `explanation` actually explains the correct answer using Note content
 - Question actually matches its assigned `concept`
