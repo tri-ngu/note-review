@@ -69,7 +69,7 @@ The end-of-Review-Session screen showing the score (correct/total) and the list 
 
 **Room**:
 A live multiplayer game created by a Host from a Question Set, joined by Players via a 4-digit PIN or QR code, capped at 10 Players, ending immediately if the Host disconnects.
-*Avoid*: Game, Lobby, Session (Session is reserved for Review Session)
+*Avoid*: Game, Lobby, Session (Session is reserved for Review Session) — as synonyms for the Room entity itself. `DESIGN.md`'s internal state name (`LOBBY`, the Room's pre-game phase) and UI/protocol labels (`Start Game`/`End Game`, `game_over`) are distinct technical usages naming a phase or action, not the Room itself — same pattern as "session cookie" coexisting with Session being reserved for Review Session.
 
 **Host**:
 The user who generated the Question Set and created the Room. Controls game flow (starts the game) but does not answer Questions and has no score.
