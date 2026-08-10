@@ -1,10 +1,10 @@
-# Design — Note Review (v1)
+# Design — Note Review
 
-Structure and architecture for the generation pipeline: turning an uploaded Note (PDF) into a Question Set, and displaying that Question Set for review. See `CONTEXT.md` for canonical terminology and `requirements.md` for functional scope. This doc covers *how* generation works internally and the concrete data model, which `requirements.md` intentionally leaves at the behavioral level.
+Structure and architecture for the full product: the v1 generation pipeline (uploaded Note → Question Set → flashcard review) and the v2 Room mode (Kahoot-style live multiplayer game). See `CONTEXT.md` for canonical terminology and `requirements.md` for functional scope — this doc covers *how* each part works internally and the concrete data model, which `requirements.md` intentionally leaves at the behavioral level. Room mode's architecture (Room pipeline, state machine, join/answer/scoring flow, data model, WebSocket protocol) is fully designed in the Room sections below but not yet implemented — see `PROGRESS.md` for current build status.
 
-Out of scope for this doc: the Kahoot-style Room/live-game mode, deferred to later work per `requirements.md`. This phase covers generation, a minimal linear flashcard display used to verify the pipeline end-to-end, and the real Review Session (shuffled order, strictly forward-only, per-question immediate feedback, ends in a Summary screen — see `requirements.md`'s Review Session acceptance criteria) reachable via a "Start Review" button on that flashcard display. (This pulls the Review Session forward from originally-deferred "later work" into this phase's scope — same pattern as Editing below.)
+This phase covers generation, a minimal linear flashcard display used to verify the pipeline end-to-end, and the real Review Session (shuffled order, strictly forward-only, per-question immediate feedback, ends in a Summary screen — see `requirements.md`'s Review Session acceptance criteria) reachable via a "Start Review" button on that flashcard display. (This pulls the Review Session forward from originally-deferred "later work" into this phase's scope — same pattern as Editing below.)
 
-## Pipeline
+## Generation pipeline
 
 ```
 Upload PDF
@@ -88,7 +88,7 @@ Linear flashcard display (this phase's UI)
 
 ## Extraction
 
-Text extraction (`pypdf`) runs once per upload, producing the single cached string every downstream call works from (see Pipeline). Pages are extracted one at a time and joined with an explicit page heading, so every agent reading Note text can attribute a quote to the page it came from — this is what the Analyzer's and Verifier's snippet `page_number` fields ultimately trace back to.
+Text extraction (`pypdf`) runs once per upload, producing the single cached string every downstream call works from (see Generation pipeline). Pages are extracted one at a time and joined with an explicit page heading, so every agent reading Note text can attribute a quote to the page it came from — this is what the Analyzer's and Verifier's snippet `page_number` fields ultimately trace back to.
 
 Format: each page's heading is `[Page N]` (1-indexed, matching the PDF's actual page number) on its own line, followed by a blank line, then that page's extracted text, followed by a blank line before the next page's heading:
 
@@ -113,7 +113,11 @@ Hard limits and enforced caps, gathered in one place — scattered across the do
 | Note upload size | 20MB | Upload validation, before Analyzer runs | Per `requirements.md`; no separate page-count limit |
 | Groq free tier (`gpt-oss-120b`) | 30 RPM, 1K RPD, 8K TPM, 200K TPD | Not enforced in code yet | [console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits). Tied to `gpt-oss-120b` — re-check on any model swap (`deepseek-r1-distill-llama-70b` decommissioned mid-project, see Weight reconciliation) |
 | Verify loop iterations | 5 | Python orchestration loop, hard stop | Ships best-effort past cap, no error |
-| Room Players | 10 | v2, not built | Per `requirements.md` |
+| Room Players | 10 | `POST /rooms/{pin}/join` | Per `requirements.md` |
+| Room PIN space | 10,000 (4-digit) | PIN generation, retry-on-collision | Real usage ~3 concurrent Rooms — collision is rare, retry loop is trivial |
+| Room question timer | 30s | Server-side, per QUESTION_ACTIVE round | Server-authoritative, see Room answer submission below |
+| Room state TTL | 5 min | Periodic sweep, from `terminal_at` (or creation time for abandoned lobbies) | See Room cleanup below |
+| Concurrent Rooms | unbounded (architecturally) | PIN-keyed dict | Expected real usage ~3; single-instance-pinned deployment assumption (see Room data model below) doesn't scale beyond what one Vercel Fluid Compute instance can hold in memory |
 
 **Concurrency vs. rate limit**: worst case per request is N concurrent initial-pass calls + 5 rounds × (up to N Verifier calls + up to N patch calls), N = concept count. TPM (8K) is the tighter constraint in practice, not RPM (30) — every Verifier call alone carries the full Note, so a handful of concurrent Verifier calls burns TPM budget before RPM becomes the issue. No concurrency cap and no 429 backoff/retry exist yet (see Concurrent generation's Concurrency cap below) — a 429 currently surfaces as a generic pipeline failure, inheriting the existing retry-button behavior (`requirements.md` Error handling) rather than being handled inside the pipeline.
 
@@ -292,7 +296,7 @@ source_quote: "Precipitation can take several forms depending on atmospheric tem
 --END--
 
 ```
-Python parses each block deterministically into a `Question` object (`concept` filled in by Python from the call context; each Question's permanent global index assigned positionally in output order — see Pipeline) — not an SDK-level structured `output_type` (see Agents section above).
+Python parses each block deterministically into a `Question` object (`concept` filled in by Python from the call context; each Question's permanent global index assigned positionally in output order — see Generation pipeline) — not an SDK-level structured `output_type` (see Agents section above).
 
 **Generator — patch pass**
 ```
@@ -532,6 +536,43 @@ class QuestionSet(BaseModel):
 
 Note text itself: a plain `str`, extracted from the PDF once at upload, held in memory — never re-extracted mid-pipeline. Passed as input only to the Analyzer (once) and the Verifier (every concurrent per-concept call, every round — see Snippet grounding above); every Generator call, initial or patch, receives snippets instead.
 
+### Room data model
+
+Extends the models above for the v2 Room mode — `RoomState.question_set` is a plain `QuestionSet` (see above), same model, same fixed shape, sourced from one hardcoded fixture for now, shuffled per-Room at creation (see Room pipeline below).
+
+```python
+class PlayerState(BaseModel):
+    player_id: str
+    nickname: str              # auto-suffixed on collision at join time
+    score: int = 0
+    connected: bool = True     # false once mid-game disconnect occurs;
+                                # Player stays in roster/leaderboard either way
+
+class RoomState(BaseModel):
+    pin: str                   # 4-digit, zero-padded string (e.g. "0042"), not an int
+    host_session_id: str       # matches the Host's existing v1 session cookie
+    question_set: QuestionSet  # per-Room shuffled copy of the fixture (Fisher-Yates,
+                                # see Room pipeline); source fixture itself never mutated
+    status: Literal["lobby", "question_active", "answer_reveal", "leaderboard", "finished"]
+    current_round: int = 0     # 0-indexed into question_set.questions
+    question_start_time: float | None = None   # server clock, set on question_start broadcast
+    players: dict[str, PlayerState]             # keyed by player_id
+    answers: dict[str, Answer]                  # keyed by player_id, cleared each round
+    terminal_reason: Literal["natural_end", "host_ended", "host_disconnected"] | None = None
+    terminal_at: float | None = None            # set when status becomes "finished"; TTL sweep basis
+
+class Answer(BaseModel):
+    player_id: str
+    selected: list[int]        # option positions, 1-based — length 1 for Multiple-Choice
+    elapsed: float              # server-measured, seconds
+    correct: bool
+    points: int
+```
+
+`RoomState` instances live in a PIN-keyed dict, in-memory, single-process — same "nested hashmap" pattern `requirements.md` already calls out for v2, carried over from v1's `SessionStore` decision. Many-Rooms-capable (no architectural cap on the dict itself), even though real usage tops out around 3 concurrent Rooms.
+
+**Vercel note**: Fluid Compute reuses function instances across concurrent requests but doesn't guarantee a single instance under load — this design accepts that risk and pins the deployment to effectively single-instance (capped max concurrency) rather than moving Room state to an external store (e.g. Redis). Revisit only if real usage ever exceeds what a single instance can hold — not expected at this project's scale.
+
 ## Verify loop detail
 
 **Verifier criteria**, checked per Question against the Note text:
@@ -546,7 +587,7 @@ Note text itself: a plain `str`, extracted from the PDF once at upload, held in 
 
 Every flagged issue also carries its own `snippets` (verbatim Note quotes + page numbers backing the requested fix) — the Verifier extracts these itself, since it's the only agent reading the full Note; the patch call that acts on the feedback never sees the Note, only these (see Snippet grounding above).
 
-**Per-Question action** the Verifier can return: `keep` or `patch`. There is deliberately no `remove` or `split` — the Question list's length is locked at the user-confirmed total (see Pipeline above), so any action that changes list length is out of scope for the verify loop:
+**Per-Question action** the Verifier can return: `keep` or `patch`. There is deliberately no `remove` or `split` — the Question list's length is locked at the user-confirmed total (see Generation pipeline above), so any action that changes list length is out of scope for the verify loop:
 
 - A Question judged unnecessary/redundant isn't deleted — Generator patches that index into a *different* Question (same `concept`, fresh angle), achieving the same practical outcome without touching list length.
 - A Question judged as trying to cover too much isn't split into two — Generator patches it into one tighter, more focused Question instead. If a concept genuinely needs more coverage than one Question can give it, that's fixed earlier, at the Analyzer checkpoint (user raises that concept's `question_count` before confirming) — not something the post-hoc verify loop tries to solve by resizing.
@@ -557,7 +598,7 @@ Every flagged issue also carries its own `snippets` (verbatim Note quotes + page
 
 ## API contract
 
-FastAPI backend, session identified via HTTP-only cookie (set on first `/upload`), keyed into the in-memory `SessionStore` (lock-guarded nested hashmap, per `storage-options.md` #13).
+FastAPI backend, session identified via HTTP-only cookie (set on first `/upload`), keyed into the in-memory `SessionStore` (lock-guarded nested hashmap).
 
 ### `POST /upload`
 - Request: `multipart/form-data` — `file` (PDF), optional `target_question_count: int`
@@ -587,6 +628,26 @@ FastAPI backend, session identified via HTTP-only cookie (set on first `/upload`
 ### `GET /session`
 Lets the frontend rehydrate on page load without re-uploading — needed for `requirements.md`'s persistence acceptance criteria (closing/reopening the browser mid-server-run must still show existing state).
 - Response `200`: `{ status: "empty" | "checkpoint_pending" | "generating" | "ready" | "failed", allocations?: list[ConceptAllocation], questions?: list[Question] }` — `allocations` present for `checkpoint_pending`, `questions` present for `ready`.
+
+### `POST /rooms`
+- Request: empty body (this phase — the one hardcoded fixture is used implicitly; a real `question_set_id` or similar would be added once this connects to the real hub, see Room mode — deferred / out of scope below)
+- Auth: Host's existing session cookie
+- Response `200`: `{ pin: str }`
+- Sets `RoomState.host_session_id` from the session cookie
+
+### `POST /rooms/{pin}/join`
+- Request: `{ nickname: str }`
+- Response `200`: `{ player_id: str, nickname: str }` (nickname echoed back, possibly auto-suffixed)
+- Errors: `404 room_not_found`, `409 room_full`, `409 already_started`
+
+### `GET /rooms/{pin}` (optional, for a Player's join-page pre-check before showing the nickname form)
+- Response `200`: `{ status: "lobby" | "in_progress" | "finished", player_count: int }` — collapses `RoomState.status`'s 5 internal values down to what a pre-join Player actually needs: `in_progress` covers `question_active`, `answer_reveal`, and `leaderboard` alike (all equally mean "too late to join")
+- Errors: `404 room_not_found`
+
+### `WS /ws/room/{pin}`
+- Host: authenticated via session cookie, must match `RoomState.host_session_id`
+- Player: `?player_id=...` query param, must match an existing `PlayerState` on this Room
+- See Room WebSocket message protocol below for the message shapes exchanged after connect
 
 ## Flashcard display (this phase)
 
@@ -654,3 +715,175 @@ From the flashcard display's browse view, at any time after generation, the user
 - **Rename** — a text field showing the current label. Saving a change renames it everywhere: every Question in the Set currently tagged with the old string is updated to the new string. Blocked (error, not merge) if the new name collides with a different concept string already present elsewhere in the Set — renaming and reassigning are different intents, and a same-name collision should not silently merge two concepts.
 - **Reassign** — a dropdown listing the other distinct `concept` values currently present in the Set (derived by scanning `QuestionSet.questions` for unique `concept` strings, excluding the current one). Picking one moves only this single Question to that existing concept; other Questions are unaffected. Disabled when no other concept exists in the Set.
 - Rename and Reassign are mutually exclusive within one edit session — editing one clears the other's pending value (last-touched wins), since a Question's `concept` can only end up one way per Save.
+
+## Room pipeline
+
+The v2 Room mode's end-to-end flow, mirroring the style of the Generation pipeline diagram above — from Room creation through cleanup. Entered directly from one hardcoded prewritten `QuestionSet` fixture — **not** through the real v1 upload/Analyzer/Generator/Verifier pipeline, and not through the v2 hub screen (`requirements.md`'s "Review or Create Room" hub); connecting Room creation to the real hub/pipeline is deferred (see Room mode — deferred / out of scope below).
+
+```
+Host has a QuestionSet (this phase: one hardcoded fixture, not the real pipeline)
+   |
+   v
+POST /rooms  (Host, authenticated via existing session cookie)
+   - generates a unique 4-digit PIN (random, retried on collision against
+     currently active Rooms)
+   - shuffles the fixture's Questions (Fisher-Yates, same approach as the
+     Review Session) into this Room's own question_set.questions order —
+     per requirements.md's "Questions cycle in random order during the
+     game"; the source fixture itself is never mutated, so a fresh shuffle
+     is drawn per Room, not shared across Rooms
+   - creates RoomState in the PIN-keyed in-memory store, status = LOBBY
+   - Host's WS connects: /ws/room/{pin}  (role = host, matched via session
+     cookie against RoomState.host_session_id)
+   |
+   v
+LOBBY
+   - frontend renders the PIN + a client-generated QR code (encodes
+     {origin}/join/{pin}) for Host to display/share
+   - Players join independently (see Room join flow below), each appearing
+     in Host's live roster as they connect
+   - Host starts whenever ready, no minimum Player count (per requirements.md)
+   |
+   v  (Host clicks "Start Game")
+QUESTION_ACTIVE  (round 1..N, N = fixture's QuestionSet length)
+   - join window closes — no further joins accepted (see Room join flow)
+   - server broadcasts question_start to Host + every connected Player:
+     full Question fields EXCEPT correct_answers/explanation (withheld
+     until reveal), plus server's own broadcast timestamp
+   - server starts its own 30s authoritative timer for this question
+   - Players answer (see Room answer submission below); Host sees a live
+     answered-count, not individual answers
+   - phase ends when either every connected, not-yet-disconnected Player
+     has submitted, or the 30s server timer expires — whichever first
+   |
+   v
+ANSWER_REVEAL
+   - server broadcasts answer_reveal: correct_answers, explanation, and
+     each connected client's own result (correct/incorrect, points earned)
+   - per-Player score updated server-side (see Room scoring below)
+   |
+   v
+LEADERBOARD
+   - server broadcasts leaderboard: ranked Player list (nickname, running
+     total score, rank) — tied scores share the same rank (standard/skip
+     ranking, see Room scoring below)
+   - Host sees "Next Question" (or "Finish" if this was the last Question)
+     and "End Game", both host-triggered — no auto-advance
+   |
+   +--> Host clicks "Next Question" --> back to QUESTION_ACTIVE (round+1)
+   |
+   +--> Host clicks "End Game" (early, before last Question) --> FINISHED
+   |
+   +--> (round == N, was already the last Question) --> FINISHED
+   |
+   v
+FINISHED
+   - server broadcasts game_over: final leaderboard, built from whichever
+     Questions were actually played (full set on natural end, partial on
+     early End Game — same message shape either way)
+   - RoomState marked terminal; 5-minute TTL starts (see Room cleanup below)
+   - WS connections stay open (so the final leaderboard remains visible)
+     until the client navigates away or the TTL sweep evicts the Room
+   |
+   v
+(5 min later, or immediately on Host WS close before FINISHED)
+CLEANUP
+   - periodic sweep evicts any Room whose TTL has elapsed from the
+     PIN-keyed store — PIN becomes reusable
+```
+
+**Host-disconnect short-circuit**: at any point after LOBBY, if the Host's WS closes (not a graceful "End Game," an actual connection loss/close), the Room transitions straight to FINISHED with a `host_disconnected` reason, broadcasting the same `game_over` shape (partial results, as of whatever was last completed) to remaining Players, then follows the same 5-minute TTL cleanup. No grace period — matches `requirements.md`'s "Room ends immediately for everyone" exactly as worded.
+
+## Room states
+
+```
+LOBBY --(Host starts)--> QUESTION_ACTIVE --(all answered / timeout)--> ANSWER_REVEAL --> LEADERBOARD
+                              ^                                                              |
+                              |______________(Host: Next Question, round < N)________________|
+
+LEADERBOARD --(Host: Next Question, round == N)--> FINISHED
+LEADERBOARD --(Host: End Game, any round)--------> FINISHED
+LOBBY / QUESTION_ACTIVE / ANSWER_REVEAL / LEADERBOARD --(Host WS closes)--> FINISHED (host_disconnected)
+FINISHED --(5 min TTL)--> evicted from store
+```
+
+## Room join flow
+
+```
+Player has: {origin}/join/{pin}  (typed manually, or via QR scan — same URL either way)
+   |
+   v
+Join page pre-fills PIN from the URL param; Player enters a nickname
+   |
+   v
+POST /rooms/{pin}/join  { nickname }
+   - 404 room_not_found     — PIN doesn't match any active Room
+   - 409 room_full          — already at 10 Players
+   - 409 already_started    — Room is past LOBBY (join window closed)
+   - 200 { player_id, ... } — nickname auto-suffixed ("(1)", "(2)", ...)
+     if it collides with an existing Player in this Room; player_id is
+     scoped to this Room only, not reused across Rooms
+   |
+   v
+WS connects: /ws/room/{pin}?player_id={player_id}  (role = player)
+   - server validates player_id belongs to an active Player record on
+     this Room before accepting the connection
+   |
+   v
+Player appears live in Host's LOBBY roster
+```
+
+**Lobby-phase disconnect**: if a Player's WS closes while the Room is still in LOBBY, they're removed from the roster immediately (frees their nickname/slot). Reconnecting is just a fresh `POST /rooms/{pin}/join` — server doesn't need to remember they were ever there. This only applies pre-game; once QUESTION_ACTIVE starts, disconnect is terminal for that Player (per `requirements.md` — not removed, but cannot rejoin, score frozen wherever it stood).
+
+## Room answer submission
+
+Two shapes, chosen by `Question.is_select_all`, both ending in the same one-shot lock:
+
+- **Multiple-Choice** (`is_select_all: false`): tapping any option immediately sends the answer message — no separate Submit step.
+- **Select-All** (`is_select_all: true`): tapping toggles local selection state only (no message sent per tap); an explicit Submit button (enabled once ≥1 option is selected) sends the final selected set as one answer message.
+
+Either way, the answer message is one-shot: the first answer message the server accepts for a given Player+Question is final. Any further answer message for that same Question from that Player is rejected (already answered).
+
+**Timing**: server records `question_start_time` the instant it broadcasts `question_start`. When an answer message arrives, server computes `elapsed = arrival_time - question_start_time` using its own clock only — the message carries no client-reported timing field at all, so there's nothing for a client to lie about. `elapsed` is clamped to the 30s window; anything arriving after the server's own cutoff is rejected as late (treated as a timeout, scores 0). Client-side countdowns are purely cosmetic UI, not consulted for scoring.
+
+Each Player's own device renders the full question (text + all 4 options) directly — self-contained, not a shared-screen model — matching Players joining from different devices and different networks, per this project's Room mode goal.
+
+## Room scoring
+
+- **Multiple-Choice**: correct iff the selected option matches the single entry in `correct_answers`.
+- **Select-All**: correct iff the selected set exactly equals the `correct_answers` set — no partial credit for a subset/superset match.
+- **Points**: on a correct answer, `elapsed` (server-measured, see Room answer submission above) maps to the existing bracket table from `requirements.md`: 0-5s=100, 5-10s=95, 10-15s=90, 15-20s=85, 20-25s=80, 25-30s=75. Incorrect answers and timeouts score 0, per `requirements.md`.
+- Running total accumulates across the Room's lifetime (not reset per question); shown on every `leaderboard` broadcast.
+- **Ranking**: standard competition ranking ("1224") — Players with equal score share the same rank (e.g. two Players tied at 2nd both show rank 2), and the next distinct score skips ahead accordingly (next Player is rank 4, not 3). No tie-break needed, so nothing extra is tracked per Player to break ties — `score` alone determines rank.
+
+## Room cleanup
+
+Periodic sweep (e.g. every 30s) evicts any `RoomState` where `terminal_at` is set and `now - terminal_at > 300` (5 minutes). Applies uniformly to all three terminal paths (natural end, Host-triggered End Game, Host-disconnect) — same TTL, same sweep, no special-casing per reason. Abandoned lobbies (Room created, Host never starts) use the same TTL mechanism, measured from `RoomState` creation time instead of a terminal-state transition — treat "never left LOBBY" past the TTL as its own implicit terminal case.
+
+## Room WebSocket message protocol
+
+Single endpoint per Room (`/ws/room/{pin}`), one connection per client (Host or Player), envelope shape mirrors this doc's existing SSE event style (used in `/generate`'s response, see API contract):
+
+**Server → client** (broadcast to everyone in the Room, unless noted):
+- `player_joined` — `{ player_id, nickname }` (lobby roster update)
+- `player_left` — `{ player_id }` (lobby-phase disconnect only, per Room join flow above)
+- `question_start` — `{ round, total_rounds, question_text, options, is_select_all, page_number, concept, server_time }` — no `correct_answers`/`explanation`
+- `answered_count` — `{ answered, total_connected }` (progress ping during QUESTION_ACTIVE, Host-facing mainly but harmless to broadcast to all)
+- `answer_reveal` — `{ round, correct_answers, explanation, results: { [player_id]: { correct, points } } }`
+- `leaderboard` — `{ round, total_rounds, standings: [{ player_id, nickname, score, rank }], is_final: bool }` — `rank` computed server-side (standard/skip ranking, see Room scoring), not derived client-side from array order
+- `game_over` — `{ reason: "natural_end" | "host_ended" | "host_disconnected", final_standings: [...] }`
+- `error` — `{ code, message }` (e.g. rejected late/duplicate answer)
+
+**Client → server**:
+- `submit_answer` — `{ round, selected: list[int] }` (Player only; Multiple-Choice sends on first tap, Select-All sends on explicit Submit)
+- `advance` — `{}` (Host only; means "Start Game" from LOBBY, "Next Question" from LEADERBOARD when round < N)
+- `end_game` — `{}` (Host only; valid from any LEADERBOARD, including the final one)
+
+Server validates every client→server message against the sender's role (Player messages rejected if sent by Host's connection and vice versa) and current `RoomState.status` (e.g. `submit_answer` rejected outside QUESTION_ACTIVE) before acting on it.
+
+## Room mode — deferred / out of scope
+
+- **Connecting to the real hub/pipeline**: `POST /rooms` currently assumes the one hardcoded fixture. Once Room creation is wired to the real hub, it should instead take the session's actual generated `QuestionSet` (same one the v1 Review flow uses), reached via the hub screen's "Create Room" option (`requirements.md`'s v2 hub) rather than a standalone entry point.
+- **Multiple selectable prewritten fixtures**: explicitly not building this — one fixture only, permanently within Room mode's scope.
+- **External shared state store** (Redis/etc.): only revisit if single-instance in-memory state actually proves insufficient in practice.
+- **Partial credit for Select-All scoring**: explicitly decided against (all-or-nothing) — would need its own formula if ever revisited.
