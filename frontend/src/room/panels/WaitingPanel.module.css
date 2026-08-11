@@ -1,0 +1,35 @@
+.theme {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #e9e6df;
+  color: #1a1a1a;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+.stage {
+  max-width: 420px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.pinLabel {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: Constantia, Georgia, serif;
+  color: #4b5440;
+  margin: 0;
+}
+
+.message {
+  font-family: Rockwell, Georgia, serif;
+  color: #4b5440;
+  margin: 0;
+}
