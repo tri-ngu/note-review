@@ -10,6 +10,7 @@ export function JoinPage() {
   const navigate = useNavigate();
   const [precheck, setPrecheck] = useState<RoomPrecheck | 'not_found' | 'loading'>('loading');
   const [nickname, setNickname] = useState('');
+  const [pinInput, setPinInput] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,7 +31,30 @@ export function JoinPage() {
   }, [pin]);
 
   if (!pin) {
-    return <RoomErrorPanel title="Room not found" message="No room PIN was given." />;
+    const handlePinSubmit = (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const trimmed = pinInput.trim();
+      if (trimmed) navigate(`/join/${trimmed}`);
+    };
+
+    return (
+      <main className={styles.theme}>
+        <form className={styles.stage} onSubmit={handlePinSubmit}>
+          <p className={styles.pinLabel}>Enter a Room PIN</p>
+          <input
+            className={styles.nicknameInput}
+            value={pinInput}
+            onChange={(event) => setPinInput(event.target.value)}
+            placeholder="4-digit PIN"
+            inputMode="numeric"
+            required
+          />
+          <button className={styles.joinBtn} type="submit" disabled={pinInput.trim() === ''}>
+            Continue
+          </button>
+        </form>
+      </main>
+    );
   }
 
   if (precheck === 'loading') {

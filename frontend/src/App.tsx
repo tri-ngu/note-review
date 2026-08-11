@@ -31,6 +31,10 @@ function FlashcardHome() {
     navigate(`/host/${data.pin}`);
   };
 
+  const handleJoinRoom = () => {
+    navigate('/join');
+  };
+
   if (view === 'review') {
     return <ReviewSession questionSet={questionSet} onExit={() => setView('browse')} />;
   }
@@ -41,6 +45,7 @@ function FlashcardHome() {
       onStartReview={() => setView('review')}
       onUpdateQuestion={updateQuestion}
       onCreateRoom={handleCreateRoom}
+      onJoinRoom={handleJoinRoom}
     />
   );
 }
@@ -51,6 +56,7 @@ function App() {
       <Routes>
         <Route path="/" element={<FlashcardHome />} />
         <Route path="/host/:pin" element={<HostPage />} />
+        <Route path="/join" element={<JoinPage />} />
         <Route path="/join/:pin" element={<JoinPage />} />
         <Route path="/play/:pin" element={<PlayerPage />} />
       </Routes>
