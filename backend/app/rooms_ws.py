@@ -54,6 +54,9 @@ async def rooms_websocket_endpoint(websocket: WebSocket, pin: str) -> None:
             await websocket.close(code=4403)
             return
         await websocket.accept()
+        existing = conns.players.get(player_id)
+        if existing is not None:
+            await existing.close(code=4409)
         conns.players[player_id] = websocket
         await _broadcast(
             pin,
@@ -74,7 +77,7 @@ async def rooms_websocket_endpoint(websocket: WebSocket, pin: str) -> None:
             message = await websocket.receive_json()
             await _handle_message(store, pin, role, player_id, message)
     except WebSocketDisconnect:
-        await _handle_disconnect(store, pin, role, player_id)
+        await _handle_disconnect(store, pin, role, player_id, websocket)
 
 
 async def _handle_message(store: RoomStore, pin: str, role: str, player_id: str | None, message: dict) -> None:
@@ -89,13 +92,15 @@ async def _handle_message(store: RoomStore, pin: str, role: str, player_id: str 
     # DESIGN.md says "rejected", enforced here by simply not acting on it
 
 
-async def _handle_disconnect(store: RoomStore, pin: str, role: str, player_id: str | None) -> None:
+async def _handle_disconnect(store: RoomStore, pin: str, role: str, player_id: str | None, websocket: WebSocket) -> None:
     conns = _connections_for(pin)
     if role == "host":
         conns.host = None
         await _end_game(store, pin, reason="host_disconnected")
         return
 
+    if conns.players.get(player_id) is not websocket:
+        return  # this connection was already replaced by a newer one — its own state is stale, no-op
     conns.players.pop(player_id, None)
     lobby_still_open = False
     try:
@@ -128,6 +133,7 @@ def _question_start_payload(room, round_index: int) -> dict:
 
 async def _handle_advance(store: RoomStore, pin: str) -> None:
     payload = None
+    reveal_to_leaderboard = False
     async with store.mutate(pin) as room:
         if room.status == "lobby":
             round_index = 0
@@ -136,6 +142,8 @@ async def _handle_advance(store: RoomStore, pin: str) -> None:
             room.question_start_time = time.monotonic()
             room.answers = {}
             payload = _question_start_payload(room, round_index)
+        elif room.status == "answer_reveal":
+            reveal_to_leaderboard = True
         elif room.status == "leaderboard" and room.current_round + 1 < len(room.question_set.questions):
             round_index = room.current_round + 1
             room.status = "question_active"
@@ -146,9 +154,11 @@ async def _handle_advance(store: RoomStore, pin: str) -> None:
         elif room.status == "leaderboard":
             pass  # payload stays None: last question already played, fall through to finish
         else:
-            return  # advance is a no-op outside lobby/leaderboard
+            return  # advance is a no-op outside lobby/leaderboard/answer_reveal
 
-    if payload is not None:
+    if reveal_to_leaderboard:
+        await _show_leaderboard(store, pin)
+    elif payload is not None:
         await _broadcast(pin, payload)
         asyncio.create_task(_run_question_timer(store, pin, payload["round"]))
     else:
@@ -218,7 +228,8 @@ async def _reveal_answers(store: RoomStore, pin: str) -> None:
             "results": results,
         }
     await _broadcast(pin, payload)
-    await _show_leaderboard(store, pin)
+    # Room stays in "answer_reveal" until the Host sends `advance` (see
+    # _handle_advance) — no auto-transition to leaderboard.
 
 
 async def _show_leaderboard(store: RoomStore, pin: str) -> None:

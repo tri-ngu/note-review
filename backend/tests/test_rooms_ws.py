@@ -111,7 +111,8 @@ def test_advance_after_reveal_moves_to_leaderboard_then_next_question():
         player_ws.receive_json()  # answered_count (also broadcast to the answering player)
         player_ws.receive_json()  # answer_reveal
 
-        host_leaderboard = host_ws.receive_json()  # auto-broadcast, no host action needed to reach it
+        host_ws.send_json({"type": "advance"})  # host must advance out of answer_reveal
+        host_leaderboard = host_ws.receive_json()
         assert host_leaderboard["type"] == "leaderboard"
         assert host_leaderboard["standings"][0]["player_id"] == player_id
 
@@ -136,7 +137,8 @@ def test_end_game_from_leaderboard_broadcasts_game_over():
         host_ws.receive_json()  # answer_reveal
         player_ws.receive_json()  # answered_count (also broadcast to the answering player)
         player_ws.receive_json()  # answer_reveal
-        host_ws.receive_json()  # leaderboard (auto-broadcast, no host action needed to reach it)
+        host_ws.send_json({"type": "advance"})  # host must advance out of answer_reveal
+        host_ws.receive_json()  # leaderboard
 
         host_ws.send_json({"type": "end_game"})
         game_over = host_ws.receive_json()
@@ -289,7 +291,8 @@ def _play_round_one(host_ws, player_ws, selected):
     host_ws.receive_json()  # answer_reveal
     player_ws.receive_json()  # answered_count
     player_ws.receive_json()  # answer_reveal
-    host_ws.receive_json()  # leaderboard (auto-broadcast)
+    host_ws.send_json({"type": "advance"})  # host must advance out of answer_reveal
+    host_ws.receive_json()  # leaderboard
     player_ws.receive_json()  # leaderboard (also broadcast to the player)
     host_ws.send_json({"type": "advance"})  # -> round 2
     host_q2 = host_ws.receive_json()
@@ -331,6 +334,26 @@ def test_select_all_partial_selection_scores_zero_points_no_partial_credit(monke
         assert reveal["results"][player_id]["points"] == 0
 
 
+def test_duplicate_player_connection_closes_old_socket_and_replaces_it():
+    client, pin = _create_room_and_host_client()
+    player_id = client.post(f"/rooms/{pin}/join", json={"nickname": "Alice"}).json()["player_id"]
+    with client.websocket_connect(f"/ws/room/{pin}?player_id={player_id}") as old_ws:
+        old_ws.receive_json()  # player_joined (old connection's own broadcast)
+        with client.websocket_connect(f"/ws/room/{pin}?player_id={player_id}") as new_ws:
+            # old socket is server-closed (4409) before the new one's player_joined
+            # broadcasts — old_ws never sees that broadcast, only its own close
+            with pytest.raises(WebSocketDisconnect):
+                old_ws.receive_json()
+            new_ws.receive_json()  # player_joined (new connection's own broadcast)
+
+            # the new connection is the sole live one — a host advance reaches it
+            with client.websocket_connect(f"/ws/room/{pin}") as host_ws:
+                host_ws.send_json({"type": "advance"})
+                host_ws.receive_json()  # question_start
+                question = new_ws.receive_json()
+                assert question["type"] == "question_start"
+
+
 def test_mid_game_player_disconnect_is_not_removed_and_score_stays():
     client, pin = _create_room_and_host_client()
     player_id = client.post(f"/rooms/{pin}/join", json={"nickname": "Alice"}).json()["player_id"]
@@ -368,7 +391,8 @@ def test_full_game_all_rounds_reaches_finished_with_natural_end():
             host_ws.receive_json()  # answer_reveal
             player_ws.receive_json()  # answered_count
             player_ws.receive_json()  # answer_reveal
-            leaderboard = host_ws.receive_json()  # auto-broadcast
+            host_ws.send_json({"type": "advance"})  # host must advance out of answer_reveal
+            leaderboard = host_ws.receive_json()
             assert leaderboard["type"] == "leaderboard"
             assert leaderboard["is_final"] == (round_number == total_rounds)
             player_ws.receive_json()  # leaderboard (also broadcast to the player)
@@ -412,6 +436,7 @@ def test_three_player_leaderboard_ranking_with_tie(monkeypatch):
             host_ws.receive_json()  # answered_count x3
         reveal = host_ws.receive_json()
         assert reveal["type"] == "answer_reveal"
+        host_ws.send_json({"type": "advance"})  # host must advance out of answer_reveal
         leaderboard = host_ws.receive_json()
         assert leaderboard["type"] == "leaderboard"
 

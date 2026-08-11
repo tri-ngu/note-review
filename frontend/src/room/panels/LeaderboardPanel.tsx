@@ -38,9 +38,11 @@ export function LeaderboardPanel({
             <button className={styles.primaryBtn} onClick={hostControls.onNext}>
               {isFinal ? 'Finish' : 'Next Question'}
             </button>
-            <button className={styles.secondaryBtn} onClick={hostControls.onEndGame}>
-              End Game
-            </button>
+            {!isFinal && (
+              <button className={styles.secondaryBtn} onClick={hostControls.onEndGame}>
+                End Game
+              </button>
+            )}
           </div>
         )}
       </div>

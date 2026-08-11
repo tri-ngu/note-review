@@ -5,6 +5,7 @@ export const initialRoomSocketState: RoomSocketState = {
   phase: 'lobby',
   roster: [],
   currentQuestion: null,
+  questionStartedAt: null,
   answeredCount: null,
   lastReveal: null,
   standings: [],
@@ -35,6 +36,7 @@ export function roomSocketReducer(state: RoomSocketState, action: RoomSocketActi
         ...state,
         phase: 'question_active',
         currentQuestion: action,
+        questionStartedAt: Date.now(),
         answeredCount: null,
         lastReveal: null,
       };

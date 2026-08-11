@@ -1,0 +1,15 @@
+.timer {
+  font-family: Constantia, Georgia, serif;
+  font-size: 14px;
+  color: #4b5440;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.urgent {
+  font-family: Constantia, Georgia, serif;
+  font-size: 14px;
+  color: #a13d2c;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}

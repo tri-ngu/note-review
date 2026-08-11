@@ -752,7 +752,8 @@ QUESTION_ACTIVE  (round 1..N, N = fixture's QuestionSet length)
      until reveal), plus server's own broadcast timestamp
    - server starts its own 30s authoritative timer for this question
    - Players answer (see Room answer submission below); Host sees a live
-     answered-count, not individual answers
+     answered-count and a countdown timer (cosmetic, client-computed from
+     receipt time — see Room answer submission), not individual answers
    - phase ends when either every connected, not-yet-disconnected Player
      has submitted, or the 30s server timer expires — whichever first
    |
@@ -761,14 +762,19 @@ ANSWER_REVEAL
    - server broadcasts answer_reveal: correct_answers, explanation, and
      each connected client's own result (correct/incorrect, points earned)
    - per-Player score updated server-side (see Room scoring below)
+   - Room stays in ANSWER_REVEAL until Host advances (see below) — Host
+     sees a distinct reveal view (own screen, not merged into Leaderboard),
+     mirroring the Player's reveal view; both wait here until Host acts
    |
-   v
+   v  (Host clicks "Show Leaderboard" — sends `advance`)
 LEADERBOARD
    - server broadcasts leaderboard: ranked Player list (nickname, running
      total score, rank) — tied scores share the same rank (standard/skip
      ranking, see Room scoring below)
-   - Host sees "Next Question" (or "Finish" if this was the last Question)
-     and "End Game", both host-triggered — no auto-advance
+   - Host sees "Next Question" (or "Finish" if this was the last Question,
+     in which case "End Game" is hidden — Finish alone covers it) and
+     "End Game" (only when not the last round), both host-triggered — no
+     auto-advance
    |
    +--> Host clicks "Next Question" --> back to QUESTION_ACTIVE (round+1)
    |
@@ -797,7 +803,7 @@ CLEANUP
 ## Room states
 
 ```
-LOBBY --(Host starts)--> QUESTION_ACTIVE --(all answered / timeout)--> ANSWER_REVEAL --> LEADERBOARD
+LOBBY --(Host starts)--> QUESTION_ACTIVE --(all answered / timeout)--> ANSWER_REVEAL --(Host: advance)--> LEADERBOARD
                               ^                                                              |
                               |______________(Host: Next Question, round < N)________________|
 
@@ -835,6 +841,8 @@ Player appears live in Host's LOBBY roster
 
 **Lobby-phase disconnect**: if a Player's WS closes while the Room is still in LOBBY, they're removed from the roster immediately (frees their nickname/slot). Reconnecting is just a fresh `POST /rooms/{pin}/join` — server doesn't need to remember they were ever there. This only applies pre-game; once QUESTION_ACTIVE starts, disconnect is terminal for that Player (per `requirements.md` — not removed, but cannot rejoin, score frozen wherever it stood).
 
+**Duplicate connection (same `player_id`)**: if a second WS connects with a `player_id` that already has a live connection, the server closes the old socket (server-initiated close) before registering the new one — the old client sees a normal `connection_closed` and can no longer act; the new connection becomes the sole live one for that Player.
+
 ## Room answer submission
 
 Two shapes, chosen by `Question.is_select_all`, both ending in the same one-shot lock:
@@ -844,7 +852,7 @@ Two shapes, chosen by `Question.is_select_all`, both ending in the same one-shot
 
 Either way, the answer message is one-shot: the first answer message the server accepts for a given Player+Question is final. Any further answer message for that same Question from that Player is rejected (already answered).
 
-**Timing**: server records `question_start_time` the instant it broadcasts `question_start`. When an answer message arrives, server computes `elapsed = arrival_time - question_start_time` using its own clock only — the message carries no client-reported timing field at all, so there's nothing for a client to lie about. `elapsed` is clamped to the 30s window; anything arriving after the server's own cutoff is rejected as late (treated as a timeout, scores 0). Client-side countdowns are purely cosmetic UI, not consulted for scoring.
+**Timing**: server records `question_start_time` the instant it broadcasts `question_start`. When an answer message arrives, server computes `elapsed = arrival_time - question_start_time` using its own clock only — the message carries no client-reported timing field at all, so there's nothing for a client to lie about. `elapsed` is clamped to the 30s window; anything arriving after the server's own cutoff is rejected as late (treated as a timeout, scores 0). Client-side countdowns are purely cosmetic UI, not consulted for scoring. Host's countdown UI uses its own message-receipt timestamp as t0, not `server_time` directly — `server_time` is a server-process-relative monotonic value, not epoch time, so it isn't diffable against a client's wall clock.
 
 Each Player's own device renders the full question (text + all 4 options) directly — self-contained, not a shared-screen model — matching Players joining from different devices and different networks, per this project's Room mode goal.
 
@@ -876,7 +884,7 @@ Single endpoint per Room (`/ws/room/{pin}`), one connection per client (Host or 
 
 **Client → server**:
 - `submit_answer` — `{ round, selected: list[int] }` (Player only; Multiple-Choice sends on first tap, Select-All sends on explicit Submit)
-- `advance` — `{}` (Host only; means "Start Game" from LOBBY, "Next Question" from LEADERBOARD when round < N)
+- `advance` — `{}` (Host only; means "Start Game" from LOBBY, "Show Leaderboard" from ANSWER_REVEAL, "Next Question" from LEADERBOARD when round < N)
 - `end_game` — `{}` (Host only; valid from any LEADERBOARD, including the final one)
 
 Server validates every client→server message against the sender's role (Player messages rejected if sent by Host's connection and vice versa) and current `RoomState.status` (e.g. `submit_answer` rejected outside QUESTION_ACTIVE) before acting on it.
@@ -886,4 +894,5 @@ Server validates every client→server message against the sender's role (Player
 - **Connecting to the real hub/pipeline**: `POST /rooms` currently assumes the one hardcoded fixture. Once Room creation is wired to the real hub, it should instead take the session's actual generated `QuestionSet` (same one the v1 Review flow uses), reached via the hub screen's "Create Room" option (`requirements.md`'s v2 hub) rather than a standalone entry point.
 - **Multiple selectable prewritten fixtures**: explicitly not building this — one fixture only, permanently within Room mode's scope.
 - **External shared state store** (Redis/etc.): only revisit if single-instance in-memory state actually proves insufficient in practice.
+- **Reload/resume mid-game**: a Host or Player reloading while the Room is still `lobby`/`question_active`/`answer_reveal`/`leaderboard` gets a fresh client with no resume — only an already-`finished`/evicted Room is detected and shown gracefully (see Room join flow's precheck pattern, now also used by Host). True mid-game resume is not built.
 - **Partial credit for Select-All scoring**: explicitly decided against (all-or-nothing) — would need its own formula if ever revisited.

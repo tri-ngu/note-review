@@ -19,9 +19,14 @@ export function useRoomSocket({ pin, role, playerId }: UseRoomSocketArgs) {
     const socket = new WebSocket(`${protocol}://${window.location.host}/ws/room/${pin}${query}`);
     socketRef.current = socket;
 
-    socket.onopen = () => dispatch({ type: 'connection_open' });
-    socket.onclose = () => dispatch({ type: 'connection_closed' });
+    socket.onopen = () => {
+      if (socketRef.current === socket) dispatch({ type: 'connection_open' });
+    };
+    socket.onclose = () => {
+      if (socketRef.current === socket) dispatch({ type: 'connection_closed' });
+    };
     socket.onmessage = (event) => {
+      if (socketRef.current !== socket) return;
       const message = JSON.parse(event.data as string) as ServerMessage;
       dispatch(message);
     };

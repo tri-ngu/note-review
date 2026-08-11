@@ -85,6 +85,7 @@ export interface RoomSocketState {
   phase: RoomPhase;
   roster: RosterPlayer[];
   currentQuestion: QuestionStartMessage | null;
+  questionStartedAt: number | null;
   answeredCount: { answered: number; total_connected: number } | null;
   lastReveal: AnswerRevealMessage | null;
   standings: LeaderboardStanding[];
