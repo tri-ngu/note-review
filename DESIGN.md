@@ -215,18 +215,12 @@ Output format:
 --START--
 concept: "Blood vessel types"
 weight_percentage: 20.33
-snippets: ["Arteries: Strong, thick-walled muscular vessels that carry blood away from the heart. They mostly transport oxygen-rich blood under high pressure." : 2],
-	  ["Arterioles: Smaller, flexible branches of arteries that regulate blood pressure as they lead into tissues" : 3]
+snippets: ["Arteries carry blood away from the heart under high pressure." : 2],
+	  ["Arterioles are smaller branches of arteries that regulate blood pressure." : 3]
 
 concept: "Bone types"
-weight_percentage: 29.67
-snippets: ["Long bones: Hard, cylindrical shafts that are longer than they are wide. They act as levers to help you move. Examples include the femur (thigh bone) and humerus (upper arm)" : 2],
-	  ["Flat bones: Thin, broad, and often curved plates that protect vital organs and offer large areas for muscles to attach. Examples include the sternum (breastbone), scapula (shoulder blade), and skull bones." : 1]
-
-concept: "Muscle types"
-weight_percentage: 50
-snippets: ["Cardiac MuscleControl: Involuntary (works on its own without you thinking about it).Location: Only in the walls of the heart.Function: Squeezes and relaxes to pump blood all through your body.Appearance: Striped or striated with a branched structure" : 5],
-	  ["Smooth MuscleControl: Involuntary (works automatically).Location: In the walls of hollow internal organs like the stomach, intestines, and blood vessels.Function: Moves food through your digestive system and controls blood flow.Appearance: Smooth and solid, with no stripes" : 6]
+weight_percentage: 79.67
+snippets: ["Long bones act as levers to help you move, e.g. the femur." : 1]
 --END--
 
 ```
@@ -278,19 +272,19 @@ Output format:
   shown in the example below
 
 --START--
-question_text: "Which process describes liquid water changing into vapor and rising into the atmosphere?"
+question_text: "Which process describes liquid water turning into vapor?"
 options: ["Evaporation", "Condensation", "Infiltration", "Runoff"]
 correct_answers: [1]
 is_select_all: false
-explanation: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere, driven by the sun's heat."
+explanation: "Evaporation is liquid water becoming vapor, driven by the sun's heat."
 page_number: 1
 source_quote: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere."
 
-question_text: "Which of the following are forms precipitation can take?"
+question_text: "Which of the following are forms of precipitation?"
 options: ["Rain", "Snow", "Evaporation", "Hail"]
 correct_answers: [1, 2, 4]
 is_select_all: true
-explanation: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail. Evaporation is a different process entirely, not a form of precipitation."
+explanation: "Rain, snow, and hail are precipitation forms; evaporation is a different process, not a form of it."
 page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
@@ -359,20 +353,20 @@ Output format:
 
 --START--
 index: 5
-question_text: "Which process describes liquid water changing into vapor and rising into the atmosphere?"
+question_text: "Which process describes liquid water turning into vapor?"
 options: ["Evaporation", "Condensation", "Infiltration", "Runoff"]
 correct_answers: [1]
 is_select_all: false
-explanation: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere, driven by the sun's heat."
+explanation: "Evaporation is liquid water becoming vapor, driven by the sun's heat."
 page_number: 1
 source_quote: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere."
 
 index: 8
-question_text: "Which of the following are forms precipitation can take?"
+question_text: "Which of the following are forms of precipitation?"
 options: ["Rain", "Snow", "Evaporation", "Hail"]
 correct_answers: [1, 2, 4]
 is_select_all: true
-explanation: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail. Evaporation is a different process entirely, not a form of precipitation."
+explanation: "Rain, snow, and hail are precipitation forms; evaporation is a different process, not a form of it."
 page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
