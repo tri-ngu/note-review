@@ -1,6 +1,6 @@
 # Design — Note Review
 
-Structure and architecture for the full product: the v1 generation pipeline (uploaded Note → Question Set → flashcard review) and the v2 Room mode (Kahoot-style live multiplayer game). See `CONTEXT.md` for canonical terminology and `requirements.md` for functional scope — this doc covers *how* each part works internally and the concrete data model, which `requirements.md` intentionally leaves at the behavioral level. Room mode's architecture (Room pipeline, state machine, join/answer/scoring flow, data model, WebSocket protocol) is fully designed in the Room sections below but not yet implemented — see `PROGRESS.md` for current build status.
+Structure and architecture for the full product: the v1 generation pipeline (uploaded Note → Question Set → flashcard review) and the v2 Room mode (Kahoot-style live multiplayer game). See `CONTEXT.md` for canonical terminology and `requirements.md` for functional scope — this doc covers *how* each part works internally and the concrete data model, which `requirements.md` intentionally leaves at the behavioral level. Room mode's architecture (Room pipeline, state machine, join/answer/scoring flow, data model, WebSocket protocol) is fully designed and implemented in the Room sections below — see `PROGRESS.md` for current build status.
 
 This phase covers generation, a minimal linear flashcard display used to verify the pipeline end-to-end, and the real Review Session (shuffled order, strictly forward-only, per-question immediate feedback, ends in a Summary screen — see `requirements.md`'s Review Session acceptance criteria) reachable via a "Start Review" button on that flashcard display. (This pulls the Review Session forward from originally-deferred "later work" into this phase's scope — same pattern as Editing below.)
 
@@ -532,7 +532,7 @@ Note text itself: a plain `str`, extracted from the PDF once at upload, held in 
 
 ### Room data model
 
-Extends the models above for the v2 Room mode — `RoomState.question_set` is a plain `QuestionSet` (see above), same model, same fixed shape, sourced from one hardcoded fixture for now, shuffled per-Room at creation (see Room pipeline below).
+Extends the models above for the v2 Room mode — `RoomState.question_set` is a plain `QuestionSet` (see above), same model, same fixed shape, sourced from a fixed, hand-written `QuestionSet` (the Room fixture — see Room pipeline below), shuffled per-Room at creation.
 
 ```python
 class PlayerState(BaseModel):
@@ -563,7 +563,7 @@ class Answer(BaseModel):
     points: int
 ```
 
-`RoomState` instances live in a PIN-keyed dict, in-memory, single-process — same "nested hashmap" pattern `requirements.md` already calls out for v2, carried over from v1's `SessionStore` decision. Many-Rooms-capable (no architectural cap on the dict itself), even though real usage tops out around 3 concurrent Rooms.
+`RoomState` instances live in a PIN-keyed dict, in-memory, single-process — same "nested hashmap" pattern `requirements.md` already calls out for Game Room, carried over from v1's `SessionStore` decision. Many-Rooms-capable (no architectural cap on the dict itself), even though real usage tops out around 3 concurrent Rooms.
 
 **Vercel note**: Fluid Compute reuses function instances across concurrent requests but doesn't guarantee a single instance under load — this design accepts that risk and pins the deployment to effectively single-instance (capped max concurrency) rather than moving Room state to an external store (e.g. Redis). Revisit only if real usage ever exceeds what a single instance can hold — not expected at this project's scale.
 
@@ -624,7 +624,7 @@ Lets the frontend rehydrate on page load without re-uploading — needed for `re
 - Response `200`: `{ status: "empty" | "checkpoint_pending" | "generating" | "ready" | "failed", allocations?: list[ConceptAllocation], questions?: list[Question] }` — `allocations` present for `checkpoint_pending`, `questions` present for `ready`.
 
 ### `POST /rooms`
-- Request: empty body (this phase — the one hardcoded fixture is used implicitly; a real `question_set_id` or similar would be added once this connects to the real hub, see Room mode — deferred / out of scope below)
+- Request: empty body — every Room is created from the one fixed `QuestionSet` fixture (see Room pipeline below).
 - Auth: Host's existing session cookie
 - Response `200`: `{ pin: str }`
 - Sets `RoomState.host_session_id` from the session cookie
@@ -713,9 +713,9 @@ From the flashcard display's browse view, at any time after generation, the user
 
 ## Room pipeline
 
-The v2 Room mode's end-to-end flow, mirroring the style of the Generation pipeline diagram above — from Room creation through cleanup. Entered directly from one hardcoded prewritten `QuestionSet` fixture — **not** through the real v1 upload/Analyzer/Generator/Verifier pipeline, and not through the v2 hub screen (`requirements.md`'s "Review or Create Room" hub); connecting Room creation to the real hub/pipeline is deferred (see Room mode — deferred / out of scope below).
+The Room mode's end-to-end flow, mirroring the style of the Generation pipeline diagram above — from Room creation through cleanup. Entered directly from a fixed, hand-written `QuestionSet` fixture — independent of the v1 upload/Analyzer/Generator/Verifier pipeline; Room mode doesn't depend on a generated Question Set to run.
 
-For this build, the entry point is a "Create Room" button on the v1 flashcard browse view (next to "Start Review") — since the real hub is deferred, this stands in for it. The button sits alongside that view's own (different) fixture content, but `POST /rooms` always creates the Room from the backend's separate hardcoded fixture — the two are unrelated Question Sets. This mismatch is accepted, not treated as a bug, for the same deferred-hub reason.
+The entry point is a "Create Room" button on the flashcard browse view (next to "Start Review"). The button sits alongside that view's own (separate) fixture content, but `POST /rooms` always creates the Room from the backend's own fixed `QuestionSet` fixture — the two are intentionally unrelated Question Sets; Room mode's content isn't tied to whatever Question Set the browse view happens to be showing.
 
 ```
 Host has a QuestionSet (this phase: one hardcoded fixture, not the real pipeline)
@@ -894,7 +894,6 @@ Server validates every client→server message against the sender's role (Player
 
 ## Room mode — deferred / out of scope
 
-- **Connecting to the real hub/pipeline**: `POST /rooms` currently assumes the one hardcoded fixture. Once Room creation is wired to the real hub, it should instead take the session's actual generated `QuestionSet` (same one the v1 Review flow uses), reached via the hub screen's "Create Room" option (`requirements.md`'s v2 hub) rather than a standalone entry point.
 - **Multiple selectable prewritten fixtures**: explicitly not building this — one fixture only, permanently within Room mode's scope.
 - **External shared state store** (Redis/etc.): only revisit if single-instance in-memory state actually proves insufficient in practice.
 - **Partial credit for Select-All scoring**: explicitly decided against (all-or-nothing) — would need its own formula if ever revisited.

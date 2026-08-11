@@ -8,6 +8,12 @@
 
 Turns a student's PDF notes into an AI-generated question set that can be reviewed like flashcards, and (in a later version) played as a live multiplayer quiz game.
 
+## TEMPORARY — Game Room's Question Set source
+
+**Game Room (v2) is merged into `main` and live, but every Room is created from one hardcoded, hand-written `QuestionSet` fixture (`WATER_CYCLE_QUESTION_SET`) — not from a user's actual uploaded Note run through the real Analyzer/Generator/Verifier pipeline.** This was merged ahead of the original plan (Room was meant to ship only once v1.x was fully done, entered via a hub screen tied to a real generated `QuestionSet`) at Tri's explicit direction, so the already-built and manually-tested Game Room feature wouldn't sit unmerged.
+
+**`DESIGN.md` and `requirements.md` both describe Game Room as if this fixture-wiring were the final, permanent design — it is not.** Wherever those docs say a Room is created "from a Question Set," read that today as "from the one hardcoded fixture." Once v1 generation (the real pipeline) is finished, Room creation needs to be reconnected to take the session's actual generated `QuestionSet` instead.
+
 ## Required Documents
 
 Docs this project runs on.

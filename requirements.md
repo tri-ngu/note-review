@@ -1,8 +1,6 @@
 # Requirements — Note Review (v1)
 
-Turns a student's PDF notes into an AI-generated Question Set, reviewable as a single-pass Review Session. See `CONTEXT.md` for canonical terminology.
-
-v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
+Turns a student's PDF notes into an AI-generated Question Set, reviewable as a single-pass Review Session, and playable as a live multiplayer Game Room. See `CONTEXT.md` for canonical terminology.
 
 ## Intended User & Needs
 
@@ -11,7 +9,7 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 **User needs** (equal weight, not ranked):
 - Time savings — skip manually turning notes into a testable question set.
 - Self-testing capacity the student doesn't have alone — passive familiarity with material becomes an actual question bank.
-- (v2) Turns solo review into a social/competitive study activity via Room.
+- Turns solo review into a social/competitive study activity via Game Room.
 
 **Main use cases**:
 1. Upload a Note, review/adjust the Analyzer's concept breakdown, generate a Question Set, review it (Review Session).
@@ -19,7 +17,7 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 3. Edit a Question's text/options/answers/explanation in place, any time, without regenerating.
 4. Retry generation after a pipeline failure, without re-uploading.
 5. Upload a new Note, discarding the previous session's Question Set.
-6. (v2) Host a live Room from a generated Question Set; Players join via PIN/QR and compete in real time.
+6. Host a live Game Room from a Question Set; Players join via PIN/QR and compete in real time.
 
 ## Functional Requirements
 
@@ -72,6 +70,25 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 - No user accounts or login — permanent non-goal, not just a v1 cut (see Non-Goals). Session identified via HTTP-only cookie.
 - Question Set and Review Session state persist server-side, in memory, keyed by that cookie, until the server process restarts. No database, no persistence across a server restart.
 - One Question Set per session at a time — a new upload replaces the previous Question Set. No browsing or switching between previously-generated Question Sets in v1.
+
+
+
+### Game Room
+
+- Reachable via a "Create Room" button on the flashcard browse view, next to "Start Review".
+- Host creates a Room from a Question Set; Players join via a 4-digit numeric PIN or QR code.
+- Room capped at 10 Players. No accounts — nothing about a Player beyond their nickname and score is stored.
+- Nickname entry per joining Player; duplicate nicknames are auto-suffixed ("(1)", "(2)", ...) rather than rejected.
+- Host is spectator/controller only: starts the game manually whenever ready (no minimum Player count), does not answer Questions, has no score. No kick control.
+- Join window closes once the Host starts the game — no joining mid-game.
+- If a Player disconnects mid-game, they are not removed but cannot rejoin — no reconnect flow.
+- If the Host disconnects, the Room ends immediately for everyone.
+- Real-time sync (question changes, timer, leaderboard) via WebSocket connections.
+- Questions cycle in random order during the game.
+- 30-second time limit per Question. Once all Players have answered (or the timer runs out), each Player sees an answer-reveal screen (their answer vs. the correct answer, plus explanation); the Host sees the same reveal information and advances to the leaderboard manually, whenever ready.
+- Scoring for correct answers is time-based: 0–5s = 100pts, 5–10s = 95pts, 10–15s = 90pts, 15–20s = 85pts, 20–25s = 80pts, 25–30s = 75pts. Incorrect answers and timeouts score 0.
+- Leaderboard shown after each Question (Host-advanced from the reveal screen), plus a final leaderboard at game end.
+- Room state (PINs, connected Players, scores, current Question) lives in server memory (a nested hashmap keyed by room code), not a persistent store — consistent with no-accounts, single-process scope.
 
 
 
@@ -137,35 +154,13 @@ v1 scope only. Kahoot-style live game mode is v2 (see Planned Versions below).
 
 
 
-## Planned Versions (1.x – 2.x)
+## Planned Versions (1.x)
 
-Features discussed or explicitly deferred during requirements gathering, not committed to v1. No hard dates — priority order only. v1.x order below is fixed; v2 does not start until every v1.x item has shipped.
-
-### v1.x (flashcard/review track — incremental improvements, in order)
+Features discussed or explicitly deferred during requirements gathering, not committed to v1. No hard dates — priority order only, fixed as listed.
 
 1. Regeneration controls: regenerate the whole Question Set, or a single Question, without re-uploading.
 2. Multi-PDF upload: merge multiple Notes into a single Question Set.
 3. Deeper review mechanics: spaced repetition, requeueing missed Questions, "mark as known / still learning."
 4. Adjustable difficulty levels for generated Questions.
 5. Larger file support (raise or remove the 20MB cap, chunked processing for big Notes).
-
-
-
-### v2 (Kahoot-style live game mode)
-
-Starts only after every v1.x item above has shipped. Reuses the v1 upload → generate flow directly (no separate v2 upload path, no browsing previously-saved Question Sets). After generation, the user lands on a hub screen with two options — **Review** (v1 flow) or **Create Room** (below) — and returns to this hub after finishing either, so the same Question Set can be reviewed and/or used to host a Room repeatedly.
-
-- Host creates a Room from a Question Set; Players join via a 4-digit numeric PIN or QR code.
-- Room capped at 10 Players. No accounts — nothing about a Player beyond their nickname and score is stored.
-- Nickname entry per joining Player; duplicate nicknames are auto-suffixed ("(1)", "(2)", ...) rather than rejected.
-- Host is spectator/controller only: starts the game manually whenever ready (no minimum Player count), does not answer Questions, has no score. No kick control.
-- Join window closes once the Host starts the game — no joining mid-game.
-- If a Player disconnects mid-game, they are not removed but cannot rejoin — no reconnect flow in v2.
-- If the Host disconnects, the Room ends immediately for everyone.
-- Real-time sync (question changes, timer, leaderboard) via WebSocket connections.
-- Questions cycle in random order during the game.
-- 30-second time limit per Question; answer reveal happens after all Players have answered or the timer runs out.
-- Scoring for correct answers is time-based: 0–5s = 100pts, 5–10s = 95pts, 10–15s = 90pts, 15–20s = 85pts, 20–25s = 80pts, 25–30s = 75pts. Incorrect answers and timeouts score 0.
-- Leaderboard shown after each Question, plus a final leaderboard at game end.
-- Room state (PINs, connected Players, scores, current Question) is expected to live in server memory (e.g. a nested hashmap keyed by room code) rather than a persistent store — consistent with no-accounts, single-process v2 scope. Revisit only if a multi-instance deployment becomes necessary.
 
