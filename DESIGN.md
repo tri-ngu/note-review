@@ -643,6 +643,7 @@ Lets the frontend rehydrate on page load without re-uploading — needed for `re
 ### `GET /rooms/{pin}` (optional, for a Player's join-page pre-check before showing the nickname form)
 - Response `200`: `{ status: "lobby" | "in_progress" | "finished", player_count: int }` — collapses `RoomState.status`'s 5 internal values down to what a pre-join Player actually needs: `in_progress` covers `question_active`, `answer_reveal`, and `leaderboard` alike (all equally mean "too late to join")
 - Errors: `404 room_not_found`
+- Used exactly for this purpose by the frontend's `/join/:pin` join page (see Room join flow's Join-page pre-check above).
 
 ### `WS /ws/room/{pin}`
 - Host: authenticated via session cookie, must match `RoomState.host_session_id`
@@ -720,6 +721,8 @@ From the flashcard display's browse view, at any time after generation, the user
 
 The v2 Room mode's end-to-end flow, mirroring the style of the Generation pipeline diagram above — from Room creation through cleanup. Entered directly from one hardcoded prewritten `QuestionSet` fixture — **not** through the real v1 upload/Analyzer/Generator/Verifier pipeline, and not through the v2 hub screen (`requirements.md`'s "Review or Create Room" hub); connecting Room creation to the real hub/pipeline is deferred (see Room mode — deferred / out of scope below).
 
+For this build, the entry point is a "Create Room" button on the v1 flashcard browse view (next to "Start Review") — since the real hub is deferred, this stands in for it. The button sits alongside that view's own (different) fixture content, but `POST /rooms` always creates the Room from the backend's separate hardcoded fixture — the two are unrelated Question Sets. This mismatch is accepted, not treated as a bug, for the same deferred-hub reason.
+
 ```
 Host has a QuestionSet (this phase: one hardcoded fixture, not the real pipeline)
    |
@@ -792,6 +795,8 @@ CLEANUP
      PIN-keyed store — PIN becomes reusable
 ```
 
+**Frontend routing**: `/host/:pin` (Host) and `/play/:pin?player_id=...` (Player) are each a single route whose screen swaps panels by `RoomState.status`, delivered live over the WebSocket — not separate routes per phase, since phase transitions are server-driven, not navigation events. The Host's screen collapses ANSWER_REVEAL directly into its LEADERBOARD-phase panel (both broadcasts land back-to-back with no Host action between); the wire protocol itself is unchanged, this only affects what the Host's screen renders. `/join/:pin` pre-fills the PIN from the URL (see Room join flow below). The Lobby's QR code is generated client-side via the `qrcode.react` library, no network call.
+
 **Host-disconnect short-circuit**: at any point after LOBBY, if the Host's WS closes (not a graceful "End Game," an actual connection loss/close), the Room transitions straight to FINISHED with a `host_disconnected` reason, broadcasting the same `game_over` shape (partial results, as of whatever was last completed) to remaining Players, then follows the same 5-minute TTL cleanup. No grace period — matches `requirements.md`'s "Room ends immediately for everyone" exactly as worded.
 
 ## Room states
@@ -834,6 +839,8 @@ Player appears live in Host's LOBBY roster
 ```
 
 **Lobby-phase disconnect**: if a Player's WS closes while the Room is still in LOBBY, they're removed from the roster immediately (frees their nickname/slot). Reconnecting is just a fresh `POST /rooms/{pin}/join` — server doesn't need to remember they were ever there. This only applies pre-game; once QUESTION_ACTIVE starts, disconnect is terminal for that Player (per `requirements.md` — not removed, but cannot rejoin, score frozen wherever it stood).
+
+**Join-page pre-check**: before showing the nickname form, the Player's `/join/:pin` page calls `GET /rooms/{pin}` (see API contract below) — a `room_not_found` response, `status: "finished"`, `status: "in_progress"` (join window already closed), or `status: "lobby"` with `player_count` already at the 10-Player cap all skip straight to an error screen instead of showing the form. `POST /rooms/{pin}/join`'s own 404/409 responses remain the authoritative check (e.g. a Room that fills in the gap between this pre-check and the actual join submission) — the pre-check only improves the common case.
 
 ## Room answer submission
 
@@ -881,9 +888,13 @@ Single endpoint per Room (`/ws/room/{pin}`), one connection per client (Host or 
 
 Server validates every client→server message against the sender's role (Player messages rejected if sent by Host's connection and vice versa) and current `RoomState.status` (e.g. `submit_answer` rejected outside QUESTION_ACTIVE) before acting on it.
 
+**Frontend handling notes**: the frontend consumes this protocol through one hook per connection (`useRoomSocket`), a reducer keyed on each message's `type` field. `error` is modeled client-side per the shape above, but nothing in the current backend implementation (`rooms_ws.py`) ever sends it — every invalid `submit_answer` (wrong status, already answered, wrong round, late arrival) is currently a silent no-op server-side, not a broadcast `error`; a rejected submission today just has no visible effect client-side. The frontend does not attempt to reconnect a dropped WS connection, for either role, at any phase — a client-side build-simplicity choice, distinct from and broader than this doc's Room join flow / `requirements.md`'s narrower rule that a Player who disconnects mid-game specifically cannot rejoin. WS close codes (`4403` cookie mismatch, `4404` room not found) aren't distinguished from an ordinary network drop in the client UI — both show the same generic disconnected state.
+
 ## Room mode — deferred / out of scope
 
 - **Connecting to the real hub/pipeline**: `POST /rooms` currently assumes the one hardcoded fixture. Once Room creation is wired to the real hub, it should instead take the session's actual generated `QuestionSet` (same one the v1 Review flow uses), reached via the hub screen's "Create Room" option (`requirements.md`'s v2 hub) rather than a standalone entry point.
 - **Multiple selectable prewritten fixtures**: explicitly not building this — one fixture only, permanently within Room mode's scope.
 - **External shared state store** (Redis/etc.): only revisit if single-instance in-memory state actually proves insufficient in practice.
 - **Partial credit for Select-All scoring**: explicitly decided against (all-or-nothing) — would need its own formula if ever revisited.
+- **Reload/resume mid-game**: no full-`RoomState` snapshot-on-connect message exists — a client reconnecting mid-game only receives future broadcasts, never past ones, so a Host or Player who reloads their page loses all rendered state. Not built in this phase; would need a new server→client message type if addressed later.
+- **WS auto-reconnect**: the frontend does not retry a dropped connection (see Room WebSocket message protocol's Frontend handling notes above).
