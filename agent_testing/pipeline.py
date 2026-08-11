@@ -288,21 +288,25 @@ async def _patch_concept(
 async def run_verify_loop(
     concept_lists: dict[str, dict[int, Question]], note_text: str, step_log: list[str], concurrent: bool = False
 ) -> tuple[dict[str, dict[int, Question]], bool, int]:
+    # Only concepts still in `pending` get a Verifier call this round — a concept
+    # cleared (satisfactory) in an earlier round can't have changed since (nothing
+    # touches its Questions unless it's patched), so re-sending it every round
+    # would just re-buy the same "keep" for a full Note + questions Verifier call.
+    pending = set(concept_lists.keys())
     for round_num in range(1, VERIFY_LOOP_CAP + 1):
         verify_coros = [
-            _verify_concept(concept, indexed, note_text, round_num, step_log)
-            for concept, indexed in concept_lists.items()
+            _verify_concept(concept, concept_lists[concept], note_text, round_num, step_log)
+            for concept in pending
         ]
         verify_results = await asyncio.gather(*verify_coros) if concurrent else [await c for c in verify_coros]
 
         round_issues: dict[str, list[VerifierIssue]] = {}
-        round_satisfactory = True
         for concept, issues, satisfactory in verify_results:
             round_issues[concept] = [i for i in issues if i.action == "patch"]
-            if not satisfactory:
-                round_satisfactory = False
+            if satisfactory:
+                pending.discard(concept)
 
-        if round_satisfactory:
+        if not pending:
             log(step_log, f"Verify loop: satisfactory after round {round_num}, exiting early")
             return concept_lists, True, round_num
 
