@@ -446,3 +446,341 @@ snippets: ["Condensation is essentially the reverse of evaporation, and it is th
 - **Notes**: Still `action: "patch"` for index 2 — but the critique's *reasoning* changed from count-inference ("only one option correct, so is_select_all should be false") to phrasing-based ("question wording invites a single answer"), which is exactly the legitimate criterion the tightened guidance was meant to preserve rather than suppress. This confirms the original `expected: keep` for this test case in `test_inputs.py` was the wrong expectation, not a Verifier defect — the fixture's phrasing genuinely doesn't sell select-all framing, matching hypothesis (b) from the original finding. `test_inputs.py`'s `expected_actions` for this case corrected (index 2: `keep` → `patch`). Guidance change copied into `DESIGN.md`'s Agent prompts (Verifier quality bar) and Verify loop detail sections (kept verbatim-identical per that section's own note).
 
 ---
+
+## Run 2026-08-11T09:25:05
+
+### Analyzer — `analyzer-full-note`
+
+- **Time**: 2026-08-11T09:25:05 (5.5s)
+- **Input**: note_text (4133 chars)
+- **Expected**: weights sum to ~100 (±10), non-overlapping Concepts, all snippets verbatim substrings — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+concept: "Evaporation"
+weight_percentage: 18.0
+snippets: ["Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere." : 1],
+          ["Approximately 90 percent of the moisture in the atmosphere comes from evaporation off the surface of oceans, with the remaining 10 percent contributed by other sources such as lakes, rivers, and transpiration." : 1]
+
+concept: "Transpiration and Evapotranspiration"
+weight_percentage: 12.0
+snippets: ["Transpiration is a related but distinct process in which plants release water vapor from their leaves into the atmosphere." : 1],
+          ["Because evaporation and transpiration are difficult to measure separately in vegetated areas, scientists often combine them into a single term: evapotranspiration." : 1]
+
+concept: "Condensation and Cloud Formation"
+weight_percentage: 12.0
+snippets: ["Condensation is the process by which water vapor cools and changes back into liquid water droplets." : 2],
+          ["These droplets gather around tiny particles of dust, salt, or smoke in the air, forming clouds." : 2]
+
+concept: "Precipitation Types and Distribution"
+weight_percentage: 20.0
+snippets: ["Precipitation is the primary way water returns from the atmosphere to the Earth's surface." : 2],
+          ["On average, the Earth receives about 505,000 cubic kilometers of precipitation each year, roughly 78 percent of which falls over the oceans and the remaining 22 percent over land." : 2],
+          ["Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail." : 3],
+          ["Hail forms when strong updrafts within storm clouds carry water droplets through freezing layers of air multiple times before they fall." : 3]
+
+concept: "Surface Runoff"
+weight_percentage: 10.0
+snippets: ["Surface runoff occurs when water flows over the land's surface into streams, rivers, and eventually back into oceans or lakes, completing the visible portion of the cycle." : 1],
+          ["Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill." : 1]
+
+concept: "Infiltration and Groundwater"
+weight_percentage: 15.0
+snippets: ["Infiltration is the process by which water soaks into the ground, moving through soil and rock layers to become groundwater." : 3],
+          ["Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years." : 3],
+          ["Groundwater slowly moves through the ground and can eventually resurface through springs or be drawn up by plant roots, contributing to transpiration described earlier." : 3]
+
+concept: "Collection (Water Accumulation)"
+weight_percentage: 8.0
+snippets: ["Collection refers broadly to the accumulation of water in oceans, lakes, rivers, and groundwater reservoirs, where it will eventually evaporate again and restart the cycle." : 3],
+          ["Because the water cycle has no true beginning or end, collection is often considered the closing stage of one cycle and the starting point of the next, as accumulated water is once again exposed to solar energy and begins to evaporate." : 3]
+
+concept: "Driving Forces (Solar Energy and Gravity)"
+weight_percentage: 5.0
+snippets: ["The water cycle... describes the continuous movement of water on, above, and below the surface of the Earth." : 1],
+          ["Water is neither created nor destroyed in this process — it simply changes form and location, moving between the atmosphere, land, and oceans in a repeating cycle driven by solar energy and gravity." : 1]
+--END--
+```
+- **Notes**: Parsed OK: 8 concepts, weight sum = 100.00; CONTRACT VIOLATION: snippet not an exact substring of Note — 'The water cycle... describes the continuous movement of water on, above, and bel'; Concepts: Evaporation, Transpiration and Evapotranspiration, Condensation and Cloud Formation, Precipitation Types and Distribution, Surface Runoff, Infiltration and Groundwater, Collection (Water Accumulation), Driving Forces (Solar Energy and Gravity)
+
+### Analyzer — `analyzer-sparse-note`
+
+- **Time**: 2026-08-11T09:25:10 (2.4s)
+- **Input**: note_text (214 chars)
+- **Expected**: weights sum to ~100 (±10), non-overlapping Concepts, all snippets verbatim substrings — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+concept: "Photosynthesis"
+weight_percentage: 100.00
+snippets: ["Photosynthesis is the process by which green plants use sunlight to" : 1],
+          ["synthesize food from carbon dioxide and water." : 1],
+          ["It generally involves the green pigment chlorophyll and generates oxygen as a byproduct." : 1]
+--END--
+```
+- **Notes**: Parsed OK: 1 concepts, weight sum = 100.00; Concepts: Photosynthesis
+
+### Generator (initial pass) — `generator-initial-evaporation`
+
+- **Time**: 2026-08-11T09:25:13 (2.9s)
+- **Input**: concept='Evaporation and Transpiration', question_count=3, snippets=["The sun's heat provides the energy needed for evaporation, p...", 'Because evaporation and transpiration are difficult to measu...']
+- **Expected**: exactly 3 Questions, each with source_quote an exact substring of a given snippet — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+question_text: "What provides the energy needed for evaporation?"
+options: ["The sun's heat", "Wind speed", "Soil pressure", "Moon's gravity"]
+correct_answers: [1]
+is_select_all: false
+explanation: "The sun's heat provides the energy needed for evaporation, as stated in the snippet."
+page_number: 1
+source_quote: "The sun's heat provides the energy needed for evaporation"
+
+question_text: "Which of the following are primary sources of evaporation that supply the majority of water entering the atmosphere?"
+options: ["Oceans", "Lakes", "Rivers", "Glaciers"]
+correct_answers: [1, 2, 3]
+is_select_all: true
+explanation: "Evaporation primarily comes from oceans, lakes, and rivers, which together account for the vast majority of water entering the atmosphere."
+page_number: 1
+source_quote: "primarily from oceans, lakes, and rivers"
+
+question_text: "What term do scientists use to refer to the combined process of evaporation and transpiration?"
+options: ["Evapotranspiration", "Evaporation", "Transpiration", "Condensation"]
+correct_answers: [1]
+is_select_all: false
+explanation: "Scientists often combine evaporation and transpiration into a single term: evapotranspiration, because they are difficult to measure separately."
+page_number: 1
+source_quote: "evapotranspiration"
+--END--
+```
+- **Notes**: Parsed OK: 3 Questions (requested 3)
+
+### Generator (initial pass) — `generator-initial-runoff`
+
+- **Time**: 2026-08-11T09:25:16 (2.2s)
+- **Input**: concept='Runoff and Groundwater Storage', question_count=2, snippets=['Runoff is the primary way that liquid water returns to bodie...', 'Groundwater is stored in underground formations called aquif...']
+- **Expected**: exactly 2 Questions, each with source_quote an exact substring of a given snippet — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+question_text: "Which statement accurately describes runoff?"
+options: ["It is the primary way liquid water returns to bodies of water.", "It stores water underground for long periods of time.", "It evaporates directly into the atmosphere.", "It only occurs on flat terrain."]
+correct_answers: [1]
+is_select_all: false
+explanation: "Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill."
+page_number: 1
+source_quote: "Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill."
+
+question_text: "What are aquifers?"
+options: ["Underground formations that store groundwater for long periods of time.", "Surface streams that carry water downhill.", "Small ponds that evaporate quickly.", "Man-made reservoirs for irrigation."]
+correct_answers: [1]
+is_select_all: false
+explanation: "Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years."
+page_number: 3
+source_quote: "Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years."
+--END--
+```
+- **Notes**: Parsed OK: 2 Questions (requested 2)
+
+### Generator (initial pass) — `generator-initial-thin-snippet-overask`
+
+- **Time**: 2026-08-11T09:25:18 (13.3s)
+- **Input**: concept='Water Cycle Overview', question_count=4, snippets=['The water cycle, also called the hydrologic cycle, describes...']
+- **Expected**: exactly 4 Questions, each with source_quote an exact substring of a given snippet — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+question_text: "What alternative name is given to the water cycle?"
+options: ["Hydrologic cycle", "Carbon cycle", "Nitrogen cycle", "Rock cycle"]
+correct_answers: [1]
+is_select_all: false
+explanation: "The snippet states the water cycle is also called the hydrologic cycle."
+page_number: 1
+source_quote: "also called the hydrologic cycle"
+
+question_text: "Which realms does water move between in the water cycle?"
+options: ["Atmosphere", "Land", "Oceans", "Space"]
+correct_answers: [1, 2, 3]
+is_select_all: true
+explanation: "The snippet explains water moves between the atmosphere, land, and oceans."
+page_number: 1
+source_quote: "moving between the atmosphere, land, and oceans"
+
+question_text: "According to the description, water in the water cycle is:"
+options: ["Created anew during evaporation", "Destroyed during condensation", "Neither created nor destroyed", "Converted into rock"]
+correct_answers: [3]
+is_select_all: false
+explanation: "The snippet says water is neither created nor destroyed in this process."
+page_number: 1
+source_quote: "Water is neither created nor destroyed in this process"
+
+question_text: "What primary forces drive the water cycle?"
+options: ["Solar energy", "Gravity", "Wind", "Magnetic fields"]
+correct_answers: [1, 2]
+is_select_all: true
+explanation: "The snippet notes the cycle is driven by solar energy and gravity."
+page_number: 1
+source_quote: "driven by solar energy and gravity"
+--END--
+```
+- **Notes**: Parsed OK: 4 Questions (requested 4)
+
+### Generator (patch pass) — `generator-patch-precipitation-forms`
+
+- **Time**: 2026-08-11T09:25:31 (16.1s)
+- **Input**: concept='Condensation and Precipitation: forms and process', flagged indices=[4]
+- **Expected**: output contains exactly the flagged indices, each once; new source_quote grounded in the *fix* snippets, not the original — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+index: 4
+question_text: "Which of the following are forms that precipitation can take?"
+options: ["Rain", "Snow", "Sleet", "Hail"]
+correct_answers: [1, 2, 3]
+is_select_all: true
+explanation: "Rain is the most common form of precipitation in warmer climates, while snow and sleet occur when temperatures near the ground are at or below freezing."
+page_number: 3
+source_quote: "Rain is the most common form of precipitation in warmer climates, while snow and sleet occur when temperatures near the ground are at or below freezing."
+--END--
+```
+- **Notes**: Parsed OK: returned indices [4] (expected [4])
+
+### Generator (patch pass) — `generator-patch-two-flagged-same-concept`
+
+- **Time**: 2026-08-11T09:25:47 (17.2s)
+- **Input**: concept='Runoff and Groundwater Storage', flagged indices=[7, 8]
+- **Expected**: output contains exactly the flagged indices, each once; new source_quote grounded in the *fix* snippets, not the original — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+index: 7
+question_text: "What is the term for the process by which water soaks into the ground, moving through soil and rock layers to become groundwater?"
+options: ["Infiltration", "Percolation", "Transpiration", "Condensation"]
+correct_answers: [1]
+is_select_all: false
+explanation: "Infiltration is the process by which water soaks into the ground, moving through soil and rock layers to become groundwater."
+page_number: 3
+source_quote: "Infiltration is the process by which water soaks into the ground, moving through soil and rock layers to become groundwater."
+
+index: 8
+question_text: "Which of the following statements about surface runoff are correct?"
+options: ["Water flows over the land's surface into streams and rivers.", "Water eventually returns to oceans or lakes.", "It completes the visible portion of the water cycle.", "It primarily moves water through underground aquifers."]
+correct_answers: [1, 2, 3]
+is_select_all: true
+explanation: "Surface runoff occurs when water flows over the land's surface into streams, rivers, and eventually back into oceans or lakes, completing the visible portion of the cycle."
+page_number: 1
+source_quote: "Surface runoff occurs when water flows over the land's surface into streams, rivers, and eventually back into oceans or lakes, completing the visible portion of the cycle."
+--END--
+```
+- **Notes**: Parsed OK: returned indices [7, 8] (expected [7, 8])
+
+### Verifier — `verifier-evaporation-mixed`
+
+- **Time**: 2026-08-11T09:26:04 (26.9s)
+- **Input**: concept='Evaporation and Transpiration', indices=[1, 2, 3, 4, 5] (expected actions: {1: 'keep', 2: 'keep', 3: 'keep', 4: 'patch', 5: 'patch'})
+- **Expected**: happy-path indices -> keep, adversarial indices -> patch — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+index: 1
+action: "keep"
+critique: ""
+snippets: []
+
+index: 2
+action: "keep"
+critique: ""
+snippets: []
+
+index: 3
+action: "keep"
+critique: ""
+snippets: []
+
+index: 4
+action: "patch"
+critique: "source_quote is fabricated; the note does not contain a quote mentioning NASA satellite data, and the provided quote does not appear on page 1."
+snippets: ["Approximately 90 percent of the moisture in the atmosphere comes from evaporation off the surface of oceans" : 1]
+
+index: 5
+action: "patch"
+critique: "The option 'The sun's warmth' is essentially synonymous with the correct answer 'The sun's heat', creating ambiguity; additionally this question duplicates question 1, reducing overall quality."
+snippets: ["The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers" : 1]
+
+satisfactory: false
+--END--
+```
+- **Notes**: Parsed OK: 5 verdicts, satisfactory=False; idx 1: expected=keep actual=keep [OK]; idx 2: expected=keep actual=keep [OK]; idx 3: expected=keep actual=keep [OK]; idx 4: expected=patch actual=patch [OK]; idx 5: expected=patch actual=patch [OK]
+
+### Verifier — `verifier-condensation-mixed`
+
+- **Time**: 2026-08-11T09:26:31 (27.9s)
+- **Input**: concept='Condensation and Precipitation: forms and process', indices=[1, 2, 3, 4, 5] (expected actions: {1: 'keep', 2: 'patch', 3: 'keep', 4: 'patch', 5: 'patch'})
+- **Expected**: happy-path indices -> keep, adversarial indices -> patch — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+index: 1
+action: "keep"
+critique: ""
+snippets: []
+
+index: 2
+action: "patch"
+critique: "is_select_all is true but the stem asks for a single process; it should be false."
+snippets: ["Condensation is essentially the reverse of evaporation, and it is the process responsible for the formation of clouds and fog." : 2]
+
+index: 3
+action: "keep"
+critique: ""
+snippets: []
+
+index: 4
+action: "patch"
+critique: "source_quote is assigned to page 3, but the quoted text appears on page 2."
+snippets: ["Condensation is essentially the reverse of evaporation, and it is the process responsible for the formation of clouds and fog." : 2]
+
+index: 5
+action: "patch"
+critique: "The question stem is plural and expects multiple correct answers, yet is_select_all is false and only 'Rain' is marked correct; the correct set should include all four forms."
+snippets: ["Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail." : 3]
+
+satisfactory: false
+--END--
+```
+- **Notes**: Parsed OK: 5 verdicts, satisfactory=False; idx 1: expected=keep actual=keep [OK]; idx 2: expected=patch actual=patch [OK]; idx 3: expected=keep actual=keep [OK]; idx 4: expected=patch actual=patch [OK]; idx 5: expected=patch actual=patch [OK]
+
+### Verifier — `verifier-runoff-mixed`
+
+- **Time**: 2026-08-11T09:26:59 (26.5s)
+- **Input**: concept='Runoff and Groundwater Storage', indices=[1, 2, 3, 4] (expected actions: {1: 'keep', 2: 'keep', 3: 'patch', 4: 'patch'})
+- **Expected**: happy-path indices -> keep, adversarial indices -> patch — see DESIGN.md Expected behavior
+- **Actual output**:
+```
+--START--
+index: 1
+action: "keep"
+critique: ""
+snippets: []
+
+index: 2
+action: "patch"
+critique: "source_quote does not cover the statement that surface runoff occurs when water flows over land into streams and rivers, so it does not fully support all correct answers."
+snippets: ["Surface runoff occurs when water flows over the land's surface into streams, rivers, and eventually back into oceans or lakes" : 1, "Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill." : 1]
+
+index: 3
+action: "patch"
+critique: "The question pertains to transpiration, which is outside the assigned concept 'Runoff and Groundwater Storage'."
+snippets: ["Transpiration is a related but distinct process in which plants release water vapor from their leaves into the atmosphere." : 1]
+
+index: 4
+action: "patch"
+critique: "The question addresses evaporation, not runoff or groundwater storage, so it does not match the assigned concept 'Runoff and Groundwater Storage'."
+snippets: ["Warmer temperatures increase the rate of evaporation, which is why evaporation is fastest in tropical regions and during summer months." : 1]
+
+satisfactory: false
+--END--
+```
+- **Notes**: Parsed OK: 4 verdicts, satisfactory=False; idx 1: expected=keep actual=keep [OK]; idx 2: expected=keep actual=patch [MISMATCH]; idx 3: expected=patch actual=patch [OK]; idx 4: expected=patch actual=patch [OK]
+
+---
