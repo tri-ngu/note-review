@@ -554,6 +554,8 @@ class RoomState(BaseModel):
     answers: dict[str, Answer]                  # keyed by player_id, cleared each round
     terminal_reason: Literal["natural_end", "host_ended", "host_disconnected"] | None = None
     terminal_at: float | None = None            # set when status becomes "finished"; TTL sweep basis
+    created_at: float          # server clock, set on Room creation; TTL basis for abandoned
+                                # Lobbies (Room never left LOBBY) — see Room cleanup below
 
 class Answer(BaseModel):
     player_id: str
