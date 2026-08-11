@@ -8,9 +8,11 @@ interface FlashcardViewProps {
   questionSet: QuestionSet;
   onStartReview: () => void;
   onUpdateQuestion: (index: number, updated: Question, renameFrom?: string) => void;
+  onCreateRoom: () => void;
+  onJoinRoom: () => void;
 }
 
-export function FlashcardView({ questionSet, onStartReview, onUpdateQuestion }: FlashcardViewProps) {
+export function FlashcardView({ questionSet, onStartReview, onUpdateQuestion, onCreateRoom, onJoinRoom }: FlashcardViewProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
   const total = questionSet.questions.length;
@@ -41,9 +43,17 @@ export function FlashcardView({ questionSet, onStartReview, onUpdateQuestion }: 
             next ›
           </button>
         </div>
-        <button className={styles.startReviewBtn} onClick={onStartReview} disabled={isEditing}>
-          Start Review
-        </button>
+        <div className={styles.actionRow}>
+          <button className={styles.startReviewBtn} onClick={onStartReview} disabled={isEditing}>
+            Start Review
+          </button>
+          <button className={styles.createRoomBtn} onClick={onCreateRoom} disabled={isEditing}>
+            Create Room
+          </button>
+          <button className={styles.createRoomBtn} onClick={onJoinRoom} disabled={isEditing}>
+            Join Room
+          </button>
+        </div>
       </div>
     </main>
   );

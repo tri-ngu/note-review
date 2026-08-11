@@ -10,55 +10,73 @@
   box-sizing: border-box;
 }
 
-.cardStage {
-  max-width: 900px;
-  margin: 0 auto;
+.stage {
+  max-width: 420px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
 }
 
-.flipHint {
+.round {
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.5;
-  text-align: center;
   font-family: Constantia, Georgia, serif;
   color: #4b5440;
   margin: 0;
+  text-align: center;
 }
 
-.cardNav {
+.standings {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.row,
+.ownRow {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 13px;
+  gap: 10px;
   font-family: Constantia, Georgia, serif;
+  font-size: 14px;
   color: #4b5440;
-}
-
-.progress {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.7;
-}
-
-.navBtn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: inherit;
+  border: 1px solid #4b6043;
+  border-radius: 2px;
   padding: 6px 12px;
-  color: #4b6043;
-  font-family: Rockwell, Georgia, serif;
-}
-.navBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
 }
 
-.startReviewBtn {
+.ownRow {
+  background: #4b6043;
+  color: #f4f2e6;
+}
+
+.rank {
+  font-family: Rockwell, Georgia, serif;
+  width: 32px;
+}
+
+.nickname {
+  flex: 1;
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+}
+
+.hostActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.primaryBtn {
   font-size: 12.5px;
   border: 1px solid #4b6043;
   background: #4b6043;
@@ -69,12 +87,7 @@
   cursor: pointer;
 }
 
-.actionRow {
-  display: flex;
-  gap: 10px;
-}
-
-.createRoomBtn {
+.secondaryBtn {
   font-size: 12.5px;
   border: 1px solid #4b6043;
   background: none;

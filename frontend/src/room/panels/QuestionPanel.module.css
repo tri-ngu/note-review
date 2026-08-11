@@ -1,0 +1,90 @@
+.theme {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #e9e6df;
+  color: #1a1a1a;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  box-sizing: border-box;
+}
+
+.stage {
+  max-width: 480px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.round {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: Constantia, Georgia, serif;
+  color: #4b5440;
+  margin: 0;
+}
+
+.questionText {
+  font-family: Rockwell, Georgia, serif;
+  color: #4b5440;
+  text-align: center;
+  margin: 0;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.option,
+.optionSelected {
+  font-family: Constantia, Georgia, serif;
+  font-size: 15px;
+  text-align: left;
+  border: 1px solid #4b6043;
+  border-radius: 2px;
+  background: #f4f2e6;
+  color: #4b5440;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.optionSelected {
+  background: #4b6043;
+  color: #f4f2e6;
+}
+
+.option:disabled,
+.optionSelected:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.submitBtn {
+  font-size: 12.5px;
+  border: 1px solid #4b6043;
+  background: #4b6043;
+  color: #f4f2e6;
+  padding: 8px 20px;
+  border-radius: 2px;
+  font-family: Rockwell, Georgia, serif;
+  cursor: pointer;
+}
+.submitBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.waiting {
+  font-family: Constantia, Georgia, serif;
+  font-size: 13px;
+  color: #4b5440;
+  opacity: 0.7;
+  margin: 0;
+}
