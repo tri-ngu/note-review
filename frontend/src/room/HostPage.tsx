@@ -63,6 +63,7 @@ export function HostPage() {
         <QuestionActivePanel
           round={state.currentQuestion?.round ?? 0}
           totalRounds={state.currentQuestion?.total_rounds ?? 0}
+          isSelectAll={state.currentQuestion?.is_select_all ?? false}
           answeredCount={state.answeredCount}
           questionStartedAt={state.questionStartedAt}
         />
@@ -72,6 +73,7 @@ export function HostPage() {
         <HostRevealPanel
           round={state.currentQuestion.round}
           totalRounds={state.currentQuestion.total_rounds}
+          isSelectAll={state.currentQuestion.is_select_all}
           questionText={state.currentQuestion.question_text}
           options={state.currentQuestion.options}
           correctAnswers={state.lastReveal.correct_answers}

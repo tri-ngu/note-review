@@ -60,6 +60,7 @@ export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: 
       <div className={styles.cardInner}>
         <div className={`${styles.cardFace} ${styles.cardFront}`}>
           <div className={styles.qBody}>
+            <span className={styles.typeTag}>{question.is_select_all ? 'Select All' : 'Multiple Choice'}</span>
             <p className={styles.qText}>{question.question_text}</p>
             <ul className={styles.options}>
               {question.options.map((option, i) => (
@@ -77,6 +78,7 @@ export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: 
               <QuestionEditForm question={question} otherConcepts={otherConcepts} onSave={handleSave} onCancel={handleCancel} />
             ) : (
               <>
+                <span className={styles.typeTag}>{question.is_select_all ? 'Select All' : 'Multiple Choice'}</span>
                 <p className={styles.qText}>{question.question_text}</p>
                 <ul className={styles.options}>
                   {question.options.map((option, i) => {
@@ -99,9 +101,9 @@ export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: 
                     startEditing();
                   }}
                 >
-                  revise plate
+                  edit question
                 </button>
-                <div className={styles.cardFooter}>page {question.page_number}</div>
+                <div className={styles.cardFooter}>page {question.page_number} in file.pdf</div>
               </>
             )}
           </div>

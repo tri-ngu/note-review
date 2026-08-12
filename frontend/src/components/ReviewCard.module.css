@@ -1,5 +1,5 @@
 .card {
-  width: min(420px, 92vw);
+  width: min(840px, 92vw);
   height: 540px;
   perspective: 1800px;
 }
@@ -44,7 +44,7 @@
   padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   overflow: hidden;
   font-family: Constantia, Georgia, serif;
   color: #34402c;
@@ -53,7 +53,18 @@
   font-style: italic;
   font-size: 19px;
   line-height: 1.4;
-  margin: 0;
+  margin: 36px 0 24px 0;
+}
+
+.typeTag {
+  position: absolute;
+  top: 22px;
+  left: 26px;
+  font-size: 14.5px;
+  font-family: Rockwell, Georgia, serif;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #a3742a;
 }
 
 .options {
@@ -155,8 +166,10 @@
 }
 
 .cardFooter {
-  font-size: 12px;
-  padding-top: 6px;
+  position: absolute;
+  bottom: 20px;
+  right: 24px;
+  font-size: 17px;
   color: #6d7660;
   font-style: italic;
 }
@@ -176,11 +189,11 @@
 
 .submitBtn {
   align-self: flex-start;
-  font-size: 12.5px;
+  font-size: 20px;
   border: 1px solid #4b6043;
   background: #4b6043;
   color: #f4f2e6;
-  padding: 7px 16px;
+  padding: 11px 26px;
   border-radius: 2px;
   font-family: Rockwell, Georgia, serif;
   cursor: pointer;

@@ -31,6 +31,8 @@ Built in a separate local clone per Tri's request, so implementation edits never
   - One minor finding left as-is (Tri's call): `RevealPanel` shows "Incorrect" for a Player who simply never answered (timed out), same as an actual wrong answer — no "no answer submitted" distinction.
   - All 77 backend `pytest` cases and 49 frontend `vitest` cases pass; `tsc`/`oxlint` clean; zero errors/exceptions in the backend log across the whole live session.
 
+- **Manual test pass + UI polish** (2026-08-12), handwritten checklists across flashcard display, Review Session, and Game Room. Conducted manual tests, then polished up the design, added a concept navigation bar, and a few more items — card sizing/spacing fixes, a question-type label (flashcard, Review Session, Game Room), a redesigned Review Session Summary (score + navigable question list alongside a detail panel), a Review Session exit button, a Game Room player score/nickname corner badge, and a ~75% size increase across Game Room's UI. Re-verified after: 77/77 backend `pytest`, 49/49 frontend `vitest`, `tsc`/`oxlint` clean.
+
 ### Flashcard prototype (`frontend/`, Vite + React + TS)
 
 Built off a hand-written (not agent-generated) fixture Question Set to validate the display/UX independent of the generation pipeline, styled off the Botanical Field Guide reference in `assets/card-themes/`. Split into three builds:

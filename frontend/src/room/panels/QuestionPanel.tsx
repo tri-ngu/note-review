@@ -34,6 +34,7 @@ export function QuestionPanel({ question, onSubmit }: QuestionPanelProps) {
         <p className={styles.round}>
           Round {question.round} of {question.total_rounds}
         </p>
+        <span className={styles.typeTag}>{question.is_select_all ? 'Select All' : 'Multiple Choice'}</span>
         <h1 className={styles.questionText}>{question.question_text}</h1>
         <div className={styles.options}>
           {question.options.map((option, i) => {

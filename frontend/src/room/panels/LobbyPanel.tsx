@@ -17,7 +17,7 @@ export function LobbyPanel({ pin, roster, onStart }: LobbyPanelProps) {
       <div className={styles.stage}>
         <p className={styles.pinLabel}>Room PIN</p>
         <h1 className={styles.pin}>{pin}</h1>
-        <QRCodeSVG value={joinUrl} size={180} />
+        <QRCodeSVG value={joinUrl} size={315} />
         <p className={styles.joinUrl}>{joinUrl}</p>
         <h2 className={styles.rosterHeading}>Players ({roster.length}/10)</h2>
         <ul className={styles.roster}>

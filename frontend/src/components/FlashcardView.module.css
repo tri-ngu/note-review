@@ -10,9 +10,17 @@
   box-sizing: border-box;
 }
 
-.cardStage {
-  max-width: 900px;
+.layout {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 24px;
   margin: 0 auto;
+}
+
+.cardStage {
+  max-width: 960px;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,7 +28,7 @@
 }
 
 .flipHint {
-  font-size: 11px;
+  font-size: 18px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.5;
@@ -34,7 +42,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  font-size: 13px;
+  font-size: 21px;
   font-family: Constantia, Georgia, serif;
   color: #4b5440;
 }
@@ -49,7 +57,7 @@
   background: none;
   cursor: pointer;
   font: inherit;
-  padding: 6px 12px;
+  padding: 10px 19px;
   color: #4b6043;
   font-family: Rockwell, Georgia, serif;
 }
@@ -59,11 +67,11 @@
 }
 
 .startReviewBtn {
-  font-size: 12.5px;
+  font-size: 20px;
   border: 1px solid #4b6043;
   background: #4b6043;
   color: #f4f2e6;
-  padding: 8px 20px;
+  padding: 13px 32px;
   border-radius: 2px;
   font-family: Rockwell, Georgia, serif;
   cursor: pointer;
@@ -75,11 +83,11 @@
 }
 
 .createRoomBtn {
-  font-size: 12.5px;
+  font-size: 20px;
   border: 1px solid #4b6043;
   background: none;
   color: #4b6043;
-  padding: 8px 20px;
+  padding: 13px 32px;
   border-radius: 2px;
   font-family: Rockwell, Georgia, serif;
   cursor: pointer;

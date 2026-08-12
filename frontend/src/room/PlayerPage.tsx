@@ -6,11 +6,13 @@ import { RevealPanel } from './panels/RevealPanel';
 import { LeaderboardPanel } from './panels/LeaderboardPanel';
 import { FinishedPanel } from './panels/FinishedPanel';
 import { RoomErrorPanel } from './panels/RoomErrorPanel';
+import { PlayerBadge } from './PlayerBadge';
 
 export function PlayerPage() {
   const { pin } = useParams<{ pin: string }>();
   const [searchParams] = useSearchParams();
   const playerId = searchParams.get('player_id');
+  const nickname = searchParams.get('nickname');
 
   const { state, send } = useRoomSocket({ pin: pin ?? '', role: 'player', playerId: playerId ?? undefined });
 
@@ -26,45 +28,57 @@ export function PlayerPage() {
     return <RoomErrorPanel title="Disconnected" message="Lost connection to the room." />;
   }
 
-  switch (state.phase) {
-    case 'lobby':
-      return <WaitingPanel pin={pin} />;
-    case 'question_active':
-      return state.currentQuestion ? (
-        <QuestionPanel
-          key={state.currentQuestion.round}
-          question={state.currentQuestion}
-          onSubmit={(selected) => send({ type: 'submit_answer', round: state.currentQuestion!.round, selected })}
-        />
-      ) : null;
-    case 'reveal':
-      return state.currentQuestion && state.lastReveal ? (
-        <RevealPanel
-          questionText={state.currentQuestion.question_text}
-          options={state.currentQuestion.options}
-          correctAnswers={state.lastReveal.correct_answers}
-          explanation={state.lastReveal.explanation}
-          result={state.lastReveal.results[playerId]}
-        />
-      ) : null;
-    case 'leaderboard':
-      return (
-        <LeaderboardPanel
-          standings={state.standings}
-          round={state.currentQuestion?.round ?? 0}
-          totalRounds={state.currentQuestion?.total_rounds ?? 0}
-          isFinal={state.isFinalRound}
-          currentPlayerId={playerId}
-        />
-      );
-    case 'finished':
-      return (
-        <FinishedPanel
-          standings={state.gameOver?.final_standings ?? []}
-          reason={state.gameOver?.reason ?? 'natural_end'}
-          currentPlayerId={playerId}
-        />
-      );
-  }
-  return null;
+  const myScore = state.standings.find((s) => s.player_id === playerId)?.score ?? 0;
+  const showBadge = nickname && (state.phase === 'question_active' || state.phase === 'reveal');
+
+  return (
+    <>
+      {showBadge && <PlayerBadge nickname={nickname} score={myScore} />}
+      {(() => {
+        switch (state.phase) {
+          case 'lobby':
+            return <WaitingPanel pin={pin} />;
+          case 'question_active':
+            return state.currentQuestion ? (
+              <QuestionPanel
+                key={state.currentQuestion.round}
+                question={state.currentQuestion}
+                onSubmit={(selected) => send({ type: 'submit_answer', round: state.currentQuestion!.round, selected })}
+              />
+            ) : null;
+          case 'reveal':
+            return state.currentQuestion && state.lastReveal ? (
+              <RevealPanel
+                questionText={state.currentQuestion.question_text}
+                isSelectAll={state.currentQuestion.is_select_all}
+                options={state.currentQuestion.options}
+                correctAnswers={state.lastReveal.correct_answers}
+                explanation={state.lastReveal.explanation}
+                result={state.lastReveal.results[playerId]}
+              />
+            ) : null;
+          case 'leaderboard':
+            return (
+              <LeaderboardPanel
+                standings={state.standings}
+                round={state.currentQuestion?.round ?? 0}
+                totalRounds={state.currentQuestion?.total_rounds ?? 0}
+                isFinal={state.isFinalRound}
+                currentPlayerId={playerId}
+              />
+            );
+          case 'finished':
+            return (
+              <FinishedPanel
+                standings={state.gameOver?.final_standings ?? []}
+                reason={state.gameOver?.reason ?? 'natural_end'}
+                currentPlayerId={playerId}
+              />
+            );
+          default:
+            return null;
+        }
+      })()}
+    </>
+  );
 }

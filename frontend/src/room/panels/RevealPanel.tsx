@@ -3,13 +3,14 @@ import styles from './RevealPanel.module.css';
 
 interface RevealPanelProps {
   questionText: string;
+  isSelectAll: boolean;
   options: string[];
   correctAnswers: number[];
   explanation: string;
   result: AnswerResult | undefined;
 }
 
-export function RevealPanel({ questionText, options, correctAnswers, explanation, result }: RevealPanelProps) {
+export function RevealPanel({ questionText, isSelectAll, options, correctAnswers, explanation, result }: RevealPanelProps) {
   return (
     <main className={styles.theme}>
       <div className={styles.stage}>
@@ -17,6 +18,7 @@ export function RevealPanel({ questionText, options, correctAnswers, explanation
           {result?.correct ? 'Correct!' : 'Incorrect'}
           {result ? ` +${result.points} pts` : ''}
         </p>
+        <span className={styles.typeTag}>{isSelectAll ? 'Select All' : 'Multiple Choice'}</span>
         <h1 className={styles.questionText}>{questionText}</h1>
         <ul className={styles.optionList}>
           {options.map((option, i) => {

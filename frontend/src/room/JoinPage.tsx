@@ -91,8 +91,8 @@ export function JoinPage() {
       setSubmitError(response.status === 409 ? 'This room is full or already started.' : 'Room not found.');
       return;
     }
-    const data = (await response.json()) as { player_id: string };
-    navigate(`/play/${pin}?player_id=${data.player_id}`);
+    const data = (await response.json()) as { player_id: string; nickname: string };
+    navigate(`/play/${pin}?player_id=${data.player_id}&nickname=${encodeURIComponent(data.nickname)}`);
   };
 
   return (

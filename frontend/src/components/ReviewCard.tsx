@@ -21,6 +21,7 @@ export function ReviewCard({ question, groupName, selected, submitted, onToggleO
       <div className={styles.cardInner}>
         <div className={`${styles.cardFace} ${styles.cardFront}`}>
           <div className={styles.qBody}>
+            <span className={styles.typeTag}>{question.is_select_all ? 'Select All' : 'Multiple Choice'}</span>
             <p className={styles.qText}>{question.question_text}</p>
             <ul className={styles.options}>
               {question.options.map((option, i) => {
@@ -50,6 +51,7 @@ export function ReviewCard({ question, groupName, selected, submitted, onToggleO
         </div>
         <div className={`${styles.cardFace} ${styles.cardBack}`}>
           <div className={styles.qBody}>
+            <span className={styles.typeTag}>{question.is_select_all ? 'Select All' : 'Multiple Choice'}</span>
             <p className={styles.qText}>{question.question_text}</p>
             <ul className={styles.options}>
               {question.options.map((option, i) => {
@@ -67,7 +69,7 @@ export function ReviewCard({ question, groupName, selected, submitted, onToggleO
             </ul>
             <p className={styles.explanation}>{question.explanation}</p>
             <span className={styles.conceptTag}>{trimConcept(question.concept)}</span>
-            <div className={styles.cardFooter}>page {question.page_number}</div>
+            <div className={styles.cardFooter}>page {question.page_number} in file.pdf</div>
           </div>
         </div>
       </div>

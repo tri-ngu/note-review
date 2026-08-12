@@ -59,9 +59,13 @@ export function ReviewSession({ questionSet, onExit }: ReviewSessionProps) {
   };
 
   if (phase === 'summary') {
-    const score = answers.filter((a, i) => isQuestionCorrect(a.selected, shuffled[i].correct_answers)).length;
-    const missed = shuffled.filter((q, i) => !isQuestionCorrect(answers[i].selected, q.correct_answers));
-    return <Summary total={shuffled.length} score={score} missed={missed} onRestart={restart} onExit={onExit} />;
+    const results = shuffled.map((q, i) => ({
+      question: q,
+      selected: answers[i].selected,
+      correct: isQuestionCorrect(answers[i].selected, q.correct_answers),
+    }));
+    const score = results.filter((r) => r.correct).length;
+    return <Summary total={shuffled.length} score={score} results={results} onRestart={restart} onExit={onExit} />;
   }
 
   return (
@@ -77,6 +81,9 @@ export function ReviewSession({ questionSet, onExit }: ReviewSessionProps) {
         />
         <p className={styles.hint}>{currentAnswer.submitted ? 'tap next to continue' : 'select an answer, then submit'}</p>
         <div className={styles.cardNav}>
+          <button className={styles.exitBtn} onClick={onExit}>
+            Exit Review
+          </button>
           <span className={styles.progress}>
             Card {currentIndex + 1} of {shuffled.length}
           </span>
