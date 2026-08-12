@@ -57,9 +57,9 @@ class RoomStore:
         async with self._lock:
             self._rooms.pop(pin, None)
 
-    async def sweep_expired(self, ttl_seconds: float = 300.0, now: float | None = None) -> list[str]:
+    async def sweep_expired(self, ttl_seconds: float = 300.0, now: float | None = None) -> list[RoomState]:
         current = now if now is not None else time.monotonic()
-        evicted: list[str] = []
+        evicted: list[RoomState] = []
         async with self._lock:
             for pin, room in list(self._rooms.items()):
                 expired = (
@@ -70,6 +70,6 @@ class RoomStore:
                     and current - room.created_at > ttl_seconds
                 )
                 if expired:
-                    evicted.append(pin)
+                    evicted.append(room)
                     del self._rooms[pin]
         return evicted

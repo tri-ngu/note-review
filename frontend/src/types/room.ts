@@ -64,6 +64,7 @@ export type ServerMessage =
   | AnswerRevealMessage
   | LeaderboardMessage
   | GameOverMessage
+  | { type: 'room_closed' }
   | { type: 'error'; code: string; message: string };
 
 export type ClientMessage =
@@ -78,7 +79,7 @@ export type RoomSocketAction =
   | { type: 'connection_open' }
   | { type: 'connection_closed' };
 
-export type RoomPhase = 'lobby' | 'question_active' | 'reveal' | 'leaderboard' | 'finished';
+export type RoomPhase = 'lobby' | 'question_active' | 'reveal' | 'leaderboard' | 'finished' | 'closed';
 
 export interface RoomSocketState {
   connection: ConnectionState;

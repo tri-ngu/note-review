@@ -84,7 +84,8 @@ async def test_sweep_expired_evicts_terminal_rooms_past_ttl():
         mutable_room.status = "finished"
         mutable_room.terminal_at = 0.0
     evicted = await store.sweep_expired(ttl_seconds=300.0, now=301.0)
-    assert evicted == [room.pin]
+    assert [r.pin for r in evicted] == [room.pin]
+    assert evicted[0].status == "finished"
     with pytest.raises(RoomNotFoundError):
         await store.get(room.pin)
 
@@ -106,7 +107,8 @@ async def test_sweep_expired_evicts_abandoned_lobby_by_created_at():
     store = RoomStore()
     room = await store.create_room(host_session_id="host-1", question_set=_question_set(), now=0.0)
     evicted = await store.sweep_expired(ttl_seconds=300.0, now=301.0)
-    assert evicted == [room.pin]
+    assert [r.pin for r in evicted] == [room.pin]
+    assert evicted[0].status == "lobby"
 
 
 @pytest.mark.asyncio

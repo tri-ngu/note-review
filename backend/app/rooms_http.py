@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from app.fixture import WATER_CYCLE_QUESTION_SET
+from app.fixture import DIGESTIVE_SYSTEM_QUESTION_SET
 from app.game_logic import shuffle_questions
 from app.models import PlayerState
 from app.session import get_or_create_session_id
@@ -28,7 +28,7 @@ async def create_room(request: Request, response: Response):
     store = _room_store(request)
     room = await store.create_room(
         host_session_id=session_id,
-        question_set=shuffle_questions(WATER_CYCLE_QUESTION_SET),
+        question_set=shuffle_questions(DIGESTIVE_SYSTEM_QUESTION_SET),
     )
     return {"pin": room.pin}
 

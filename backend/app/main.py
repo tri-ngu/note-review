@@ -4,14 +4,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.rooms_http import rooms_router
-from app.rooms_ws import rooms_websocket_endpoint
+from app.rooms_ws import notify_and_close_evicted_room, rooms_websocket_endpoint
 from app.store import RoomStore
 
 
 async def start_cleanup_sweep(store: RoomStore, interval_seconds: float = 30.0, ttl_seconds: float = 300.0) -> None:
     while True:
         await asyncio.sleep(interval_seconds)
-        await store.sweep_expired(ttl_seconds=ttl_seconds)
+        evicted = await store.sweep_expired(ttl_seconds=ttl_seconds)
+        for room in evicted:
+            await notify_and_close_evicted_room(room.pin, was_abandoned_lobby=room.status == "lobby")
 
 
 def create_app() -> FastAPI:

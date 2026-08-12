@@ -3,89 +3,141 @@ import type { QuestionSet } from '../types/question';
 export const fixtureQuestionSet = {
   questions: [
     {
-      concept: 'Evaporation and Transpiration',
-      question_text: "What is the primary source of energy driving evaporation in the water cycle?",
-      options: ["The sun's heat", 'Wind speed', 'Ocean salinity', 'Atmospheric pressure'],
+      concept: 'Ingestion and Mechanical Digestion',
+      question_text: 'What is the primary role of the teeth during ingestion?',
+      options: [
+        'Breaking food into smaller pieces for easier swallowing',
+        'Producing digestive enzymes',
+        'Absorbing nutrients directly',
+        'Neutralizing stomach acid',
+      ],
       correct_answers: [1],
       is_select_all: false,
-      explanation: "The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers.",
+      explanation:
+        "Teeth mechanically break food into smaller pieces, increasing the surface area available for enzymes to act on later — they don't produce enzymes or absorb nutrients themselves.",
       page_number: 1,
-      source_quote: "The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers, which together account for the vast majority of water entering the atmosphere.",
+      source_quote:
+        'As food enters the mouth, the teeth mechanically break it into smaller pieces, increasing the surface area available for enzymes to act on later in the digestive process.',
     },
     {
-      concept: 'Evaporation and Transpiration',
-      question_text: 'Which of the following are sources that evaporation draws water from?',
-      options: ['Oceans', 'Lakes and rivers', 'Underground aquifers', 'Storm clouds'],
+      concept: 'Ingestion and Mechanical Digestion',
+      question_text: 'Which of the following occur during swallowing?',
+      options: [
+        'The epiglottis covers the trachea',
+        'Saliva begins starch digestion via amylase',
+        'Bile is released into the small intestine',
+        'The stomach begins secreting hydrochloric acid immediately',
+      ],
       correct_answers: [1, 2],
       is_select_all: true,
-      explanation: 'Evaporation primarily draws water from oceans, lakes, and rivers — the Note does not describe evaporation drawing from aquifers or storm clouds.',
+      explanation:
+        'The epiglottis covers the trachea to prevent food from entering the airway, and salivary amylase — released earlier during chewing — is already breaking down starches. Bile release and stomach acid secretion happen later, in different stages.',
       page_number: 1,
-      source_quote: "The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers, which together account for the vast majority of water entering the atmosphere.",
+      source_quote:
+        'The epiglottis folds down over the trachea during swallowing to prevent food from entering the airway; meanwhile, salivary amylase continues breaking down starch molecules.',
     },
     {
-      concept: 'Evaporation and Transpiration',
-      question_text: 'What combined term do scientists often use for evaporation and transpiration when measured together in vegetated areas?',
-      options: ['Evapotranspiration', 'Hydrolysis', 'Percolation', 'Sublimation'],
+      concept: 'Stomach and Chemical Digestion',
+      question_text: 'What is the primary function of hydrochloric acid (HCl) in the stomach?',
+      options: [
+        'Activating pepsin and killing ingested bacteria',
+        'Absorbing fats directly into the bloodstream',
+        'Breaking down starches into simple sugars',
+        'Neutralizing bile from the liver',
+      ],
       correct_answers: [1],
       is_select_all: false,
-      explanation: 'Because evaporation and transpiration are difficult to measure separately in vegetated areas, scientists often combine them into a single term: evapotranspiration.',
-      page_number: 1,
-      source_quote: 'Because evaporation and transpiration are difficult to measure separately in vegetated areas, scientists often combine them into a single term: evapotranspiration.',
+      explanation:
+        'Hydrochloric acid activates pepsinogen into pepsin, which digests proteins, and creates an acidic environment that kills most ingested bacteria.',
+      page_number: 2,
+      source_quote:
+        "Hydrochloric acid, secreted by parietal cells in the stomach lining, activates pepsinogen into its active form, pepsin, and creates a highly acidic environment that destroys most bacteria present in food.",
     },
     {
-      concept: 'Condensation and Precipitation: forms and process',
-      question_text: 'Which of the following are forms precipitation can take?',
-      options: ['Rain', 'Snow', 'Sleet', 'Hail'],
+      concept: 'Stomach and Chemical Digestion',
+      question_text: 'Which of the following are true about pepsin?',
+      options: [
+        'It is a protein-digesting enzyme',
+        'It works best in an acidic environment',
+        'It is produced in an inactive form called pepsinogen',
+        'It begins breaking proteins into smaller peptides',
+      ],
       correct_answers: [1, 2, 3, 4],
       is_select_all: true,
-      explanation: 'Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail.',
-      page_number: 3,
-      source_quote: 'Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail.',
-    },
-    {
-      concept: 'Condensation and Precipitation: forms and process',
-      question_text: 'Which process is described as essentially the reverse of evaporation?',
-      options: ['Condensation', 'Infiltration', 'Runoff', 'Collection'],
-      correct_answers: [1],
-      is_select_all: true,
-      explanation: 'Condensation is essentially the reverse of evaporation, turning water vapor back into liquid droplets that form clouds.',
+      explanation:
+        'All four statements accurately describe pepsin: it digests proteins, requires an acidic environment to function, starts as inactive pepsinogen, and breaks proteins down into smaller peptide chains.',
       page_number: 2,
-      source_quote: 'Condensation is essentially the reverse of evaporation, and it is the process responsible for the formation of clouds and fog.',
+      source_quote:
+        "Pepsin, a protein-digesting enzyme, is secreted as inactive pepsinogen and only becomes active in the stomach's acidic environment, where it begins cleaving proteins into smaller peptide fragments.",
     },
     {
-      concept: 'Condensation and Precipitation: forms and process',
-      question_text: "Roughly what percentage of Earth's annual precipitation falls over the oceans rather than land?",
-      options: ['78 percent', '50 percent', '22 percent', '90 percent'],
-      correct_answers: [1],
-      is_select_all: false,
-      explanation: 'The Earth receives about 505,000 cubic kilometers of precipitation each year, roughly 78 percent of which falls over the oceans and the remaining 22 percent over land.',
-      page_number: 2,
-      source_quote: 'On average, the Earth receives about 505,000 cubic kilometers of precipitation each year, roughly 78 percent of which falls over the oceans and the remaining 22 percent over land.',
-    },
-    {
-      concept: 'Runoff and Groundwater Storage',
-      question_text: 'According to the Note, which underground formations store groundwater, sometimes for periods of time reaching into the thousands of years, and which also slowly feed back into rivers and lakes during dry periods when surface runoff alone is not enough to sustain them?',
-      options: ['Aquifers', 'Stomata', 'Watersheds', 'Deltas'],
-      correct_answers: [1],
-      is_select_all: false,
-      explanation: 'Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years — and which also feed into rivers and lakes during dry periods when surface runoff is minimal, helping to sustain ecosystems and water supplies between rainfalls.',
-      page_number: 3,
-      source_quote: 'Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years.',
-    },
-    {
-      concept: 'Runoff and Groundwater Storage',
-      question_text: 'Which of the following statements about surface runoff are true?',
+      concept: 'Small Intestine and Absorption',
+      question_text:
+        "A student is studying how the small intestine maximizes nutrient absorption despite its limited length compared to the large intestine; which structural feature is most directly responsible for dramatically increasing the intestine's internal surface area available for absorbing nutrients into the bloodstream?",
       options: [
-        'It occurs when water flows over land into streams and rivers',
-        'It is the primary way that liquid water returns to bodies of water',
-        'It can carry sediment, nutrients, and pollutants downhill',
-        'It occurs primarily underground through aquifers',
+        'Finger-like projections called villi (and microvilli) lining the intestinal wall',
+        'The thick muscular layer surrounding the intestine',
+        'The presence of gut bacteria in the intestinal lumen',
+        "The intestine's overall length alone",
+      ],
+      correct_answers: [1],
+      is_select_all: false,
+      explanation:
+        "Villi, and the even smaller microvilli covering them, dramatically increase the small intestine's internal surface area — far more than length alone could achieve — which is what allows efficient nutrient absorption despite the organ's limited length relative to the large intestine.",
+      page_number: 3,
+      source_quote:
+        'The inner wall of the small intestine is covered in millions of finger-like projections called villi, each covered in even smaller microvilli, which together dramatically increase the surface area available for nutrient absorption.',
+    },
+    {
+      concept: 'Small Intestine and Absorption',
+      question_text: 'Which of the following aid digestion within the small intestine?',
+      options: [
+        'Bile from the liver, stored in the gallbladder',
+        'Pancreatic enzymes released into the duodenum',
+        'Villi that increase absorptive surface area',
+        'Hydrochloric acid secreted by the stomach lining',
       ],
       correct_answers: [1, 2, 3],
       is_select_all: true,
-      explanation: "Surface runoff occurs when water flows over land into streams, rivers, and back into oceans or lakes; it's the primary way liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants downhill. Runoff is a surface process, not an underground one — that's infiltration.",
-      page_number: 1,
-      source_quote: 'Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill.',
+      explanation:
+        'Bile emulsifies fats, pancreatic enzymes break down carbohydrates, proteins, and fats, and villi absorb the resulting nutrients — all directly aiding small-intestine digestion. Hydrochloric acid is a stomach-specific secretion, not part of small intestine digestion.',
+      page_number: 3,
+      source_quote:
+        'Within the duodenum, bile released from the gallbladder emulsifies fats while pancreatic enzymes continue breaking down carbohydrates, proteins, and fats; the resulting nutrients are then absorbed through the villi lining the intestinal wall.',
+    },
+    {
+      concept: 'Large Intestine and Elimination',
+      question_text: 'What is the primary function of the large intestine?',
+      options: [
+        'Absorbing remaining water and electrolytes from digested material',
+        'Producing digestive enzymes for protein breakdown',
+        'Absorbing the majority of nutrients from food',
+        'Neutralizing stomach acid before it reaches the small intestine',
+      ],
+      correct_answers: [1],
+      is_select_all: false,
+      explanation:
+        "The large intestine's primary role is absorbing remaining water and electrolytes from indigestible material, compacting it into feces — most nutrient absorption already happened in the small intestine.",
+      page_number: 4,
+      source_quote:
+        "By the time digested material reaches the large intestine, most nutrients have already been absorbed; the large intestine's main role is reabsorbing remaining water and electrolytes, compacting waste into feces.",
+    },
+    {
+      concept: 'Large Intestine and Elimination',
+      question_text: 'Which of the following statements about gut bacteria in the large intestine is correct?',
+      options: [
+        'They help break down some remaining undigested material and produce certain vitamins',
+        'They are harmful and the immune system actively eliminates all of them',
+        'They primarily digest proteins the stomach failed to break down',
+        'They convert absorbed nutrients directly into muscle tissue',
+      ],
+      correct_answers: [1],
+      is_select_all: true,
+      explanation:
+        'Only the first statement is accurate — gut bacteria in the large intestine ferment remaining undigested material and synthesize certain vitamins, a beneficial symbiotic relationship, not something the immune system eliminates.',
+      page_number: 4,
+      source_quote:
+        'Beneficial bacteria residing in the large intestine ferment remaining undigested carbohydrates and synthesize certain vitamins, including vitamin K, in a symbiotic relationship with the host.',
     },
   ],
 } satisfies QuestionSet;

@@ -47,6 +47,10 @@ export function HostPage() {
     return <RoomErrorPanel title="Game over" message="This room's game has already finished." />;
   }
 
+  if (state.phase === 'closed') {
+    return <RoomErrorPanel title="Room closed" message="This room was closed due to inactivity." />;
+  }
+
   if (state.connection === 'closed') {
     return <RoomErrorPanel title="Disconnected" message="Lost connection to the room." />;
   }

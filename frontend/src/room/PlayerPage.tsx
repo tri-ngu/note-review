@@ -18,6 +18,10 @@ export function PlayerPage() {
     return <RoomErrorPanel title="Missing player info" message="Join the room again to get a valid player link." />;
   }
 
+  if (state.phase === 'closed') {
+    return <RoomErrorPanel title="Room closed" message="This room was closed due to inactivity." />;
+  }
+
   if (state.connection === 'closed') {
     return <RoomErrorPanel title="Disconnected" message="Lost connection to the room." />;
   }

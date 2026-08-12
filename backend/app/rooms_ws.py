@@ -38,6 +38,27 @@ async def _broadcast(pin: str, message: dict) -> None:
         await socket.send_json(message)
 
 
+async def notify_and_close_evicted_room(pin: str, was_abandoned_lobby: bool) -> None:
+    """Called by the TTL sweep for a Room that just left the store.
+
+    An abandoned Lobby (never started) may still have live Host/Player
+    connections sitting on the Lobby screen — they get an explicit
+    `room_closed` message so their UI can leave gracefully instead of being
+    silently left on a dead Room. A Room evicted after FINISHED already had
+    its clients told via `game_over`, so this just closes any lingering
+    sockets without another broadcast.
+    """
+    conns = _connections_for(pin)
+    for socket in conns.all_sockets():
+        try:
+            if was_abandoned_lobby:
+                await socket.send_json({"type": "room_closed"})
+            await socket.close(code=4410)
+        except Exception:
+            pass  # socket already gone — nothing to clean up on it
+    _connections.pop(pin, None)
+
+
 async def rooms_websocket_endpoint(websocket: WebSocket, pin: str) -> None:
     store: RoomStore = websocket.app.state.room_store
     try:

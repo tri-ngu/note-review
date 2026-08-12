@@ -656,7 +656,7 @@ Since this phase builds/tests the flashcard view itself, not the generation pipe
 
 - Fixture JSON mirrors the `QuestionSet`/`Question` Pydantic models exactly (same field names, same shapes) — validated by loading it through those same models before use, catching hand-typing mistakes (missing field, wrong option count, etc.) rather than trusting manual review alone.
 - Loaded directly by the frontend (plain import), no mock server/endpoint involved — API integration is separate, later work.
-- Content grounded in `water_cycle_note.txt` (already in repo). Covers every rendering/edit case the view needs to prove: ~6-8 Questions, mixing a standard Multiple-Choice, a Select-All with 2-3 correct, a Select-All with all 4 correct, a Select-All edge case with only 1 correct (checkbox control despite the single-answer count), 2-3 distinct `concept` values, varying `page_number`s, and at least one Question with longer `question_text`/`explanation` to test wrap/overflow.
+- Content grounded in the human digestive system (hand-written, not extracted from a real Note). Covers every rendering/edit case the view needs to prove: 8 Questions, mixing standard Multiple-Choice, a Select-All with 2 correct, a Select-All with all 4 correct, a Select-All edge case with only 1 correct (checkbox control despite the single-answer count), 4 distinct `concept` values, varying `page_number`s, and at least one Question with longer `question_text`/`explanation` to test wrap/overflow.
 - Edits made against this fixture (see Editing below) only mutate local frontend state — nothing persists past a reload until a real backend exists.
 
 ### Card mechanics
@@ -871,6 +871,8 @@ Each Player's own device renders the full question (text + all 4 options) direct
 
 Periodic sweep (e.g. every 30s) evicts any `RoomState` where `terminal_at` is set and `now - terminal_at > 300` (5 minutes). Applies uniformly to all three terminal paths (natural end, Host-triggered End Game, Host-disconnect) — same TTL, same sweep, no special-casing per reason. Abandoned lobbies (Room created, Host never starts) use the same TTL mechanism, measured from `RoomState` creation time instead of a terminal-state transition — treat "never left LOBBY" past the TTL as its own implicit terminal case.
 
+**Live connections at eviction time**: an abandoned Lobby's Host/Players may still be sitting on the Lobby screen when the sweep evicts it — each still-connected socket gets a `room_closed` broadcast (see Room WebSocket message protocol below) before the server closes it, so the client leaves gracefully instead of being stranded on a dead Room. A Room evicted after FINISHED doesn't need this — its clients already received `game_over` and are showing the final results — so the sweep just closes any lingering sockets there without a further broadcast.
+
 ## Room WebSocket message protocol
 
 Single endpoint per Room (`/ws/room/{pin}`), one connection per client (Host or Player), envelope shape mirrors this doc's existing SSE event style (used in `/generate`'s response, see API contract):
@@ -883,6 +885,7 @@ Single endpoint per Room (`/ws/room/{pin}`), one connection per client (Host or 
 - `answer_reveal` — `{ round, correct_answers, explanation, results: { [player_id]: { correct, points } } }`
 - `leaderboard` — `{ round, total_rounds, standings: [{ player_id, nickname, score, rank }], is_final: bool }` — `rank` computed server-side (standard/skip ranking, see Room scoring), not derived client-side from array order
 - `game_over` — `{ reason: "natural_end" | "host_ended" | "host_disconnected", final_standings: [...] }`
+- `room_closed` — `{}` (an abandoned Lobby was just evicted by the TTL sweep, see Room cleanup above; server closes the connection right after sending this)
 - `error` — `{ code, message }` (e.g. rejected late/duplicate answer)
 
 **Client → server**:

@@ -3,7 +3,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from fastapi.testclient import TestClient
 from app.main import create_app
-from app.fixture import WATER_CYCLE_QUESTION_SET
+from app.fixture import DIGESTIVE_SYSTEM_QUESTION_SET
 import app.rooms_ws as rooms_ws
 import app.game_logic as game_logic
 
@@ -15,7 +15,7 @@ def _create_room_and_host_client():
 
 
 def _create_deterministic_room_and_host_client(monkeypatch):
-    """Disables the per-Room shuffle so question order matches WATER_CYCLE_QUESTION_SET exactly."""
+    """Disables the per-Room shuffle so question order matches DIGESTIVE_SYSTEM_QUESTION_SET exactly."""
     monkeypatch.setattr(game_logic.random, "shuffle", lambda seq: None)
     return _create_room_and_host_client()
 
@@ -307,7 +307,7 @@ def test_select_all_exact_match_scores_full_points(monkeypatch):
          client.websocket_connect(f"/ws/room/{pin}?player_id={player_id}") as player_ws:
         _, player_q2 = _play_round_one(host_ws, player_ws, [1])
         assert player_q2["is_select_all"] is True
-        correct_answers = WATER_CYCLE_QUESTION_SET.questions[1].correct_answers
+        correct_answers = DIGESTIVE_SYSTEM_QUESTION_SET.questions[1].correct_answers
 
         player_ws.send_json({"type": "submit_answer", "round": player_q2["round"], "selected": correct_answers})
         host_ws.receive_json()  # answered_count
@@ -323,7 +323,7 @@ def test_select_all_partial_selection_scores_zero_points_no_partial_credit(monke
          client.websocket_connect(f"/ws/room/{pin}?player_id={player_id}") as player_ws:
         _, player_q2 = _play_round_one(host_ws, player_ws, [1])
         assert player_q2["is_select_all"] is True
-        full_correct = WATER_CYCLE_QUESTION_SET.questions[1].correct_answers
+        full_correct = DIGESTIVE_SYSTEM_QUESTION_SET.questions[1].correct_answers
         partial_subset = full_correct[:1]
         assert len(partial_subset) < len(full_correct)
 
@@ -372,7 +372,7 @@ def test_mid_game_player_disconnect_is_not_removed_and_score_stays():
 def test_full_game_all_rounds_reaches_finished_with_natural_end():
     client, pin = _create_room_and_host_client()
     player_id = client.post(f"/rooms/{pin}/join", json={"nickname": "Alice"}).json()["player_id"]
-    total_rounds = len(WATER_CYCLE_QUESTION_SET.questions)
+    total_rounds = len(DIGESTIVE_SYSTEM_QUESTION_SET.questions)
     with client.websocket_connect(f"/ws/room/{pin}") as host_ws, \
          client.websocket_connect(f"/ws/room/{pin}?player_id={player_id}") as player_ws:
         host_ws.receive_json()  # player_joined
@@ -427,7 +427,7 @@ def test_three_player_leaderboard_ranking_with_tie(monkeypatch):
         q2 = p2_ws.receive_json()
         q3 = p3_ws.receive_json()
 
-        # deterministic order: round 1 is the Evaporation MC question, correct_answers == [1]
+        # deterministic order: round 1 is the "teeth during ingestion" MC question, correct_answers == [1]
         p1_ws.send_json({"type": "submit_answer", "round": q1["round"], "selected": [1]})
         p2_ws.send_json({"type": "submit_answer", "round": q2["round"], "selected": [1]})
         p3_ws.send_json({"type": "submit_answer", "round": q3["round"], "selected": [2]})

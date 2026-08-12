@@ -48,6 +48,8 @@ export function roomSocketReducer(state: RoomSocketState, action: RoomSocketActi
       return { ...state, phase: 'leaderboard', standings: action.standings, isFinalRound: action.is_final };
     case 'game_over':
       return { ...state, phase: 'finished', gameOver: action };
+    case 'room_closed':
+      return { ...state, phase: 'closed' };
     case 'error':
       return { ...state, lastError: { code: action.code, message: action.message } };
     default:
