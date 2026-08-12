@@ -31,16 +31,11 @@ from agents import Agent
 from call_agent import (
     CALL_LOG,
     analyzer_agent,
-    build_generator_initial_batch_prompt,
     build_generator_initial_prompt,
-    build_generator_patch_batch_prompt,
     build_generator_patch_prompt,
-    build_verifier_batch_prompt,
     build_verifier_prompt,
     call_agent_async,
     format_snippets,
-    generator_initial_agent,
-    generator_patch_agent,
     verifier_agent,
 )
 from models import ConceptAllocation, ConceptSnippet, Question, QuestionSet, VerifierIssue
@@ -48,11 +43,8 @@ from parsers import (
     ParseError,
     is_exact_substring,
     parse_analyzer_output,
-    parse_generator_initial_batch_output,
     parse_generator_initial_output,
-    parse_generator_patch_batch_output,
     parse_generator_patch_output,
-    parse_verifier_batch_output,
     parse_verifier_output,
 )
 from quality_check import run_quality_check
@@ -74,16 +66,6 @@ GENERATOR_BASE_TOKENS = 1500
 GENERATOR_PER_QUESTION_TOKENS = 700
 VERIFIER_BASE_TOKENS = 1000
 VERIFIER_PER_QUESTION_TOKENS = 400
-
-# batch_size=1 (default) keeps the original, already-validated one-call-per-concept
-# path untouched. batch_size>1 routes through the new batched prompts/parsers
-# instead — middle ground between split (many small calls) and big-call (one call
-# for everything, which broke on output-length truncation).
-DEFAULT_BATCH_SIZE = 1
-
-
-def _chunk(items: list, size: int) -> list[list]:
-    return [items[i : i + size] for i in range(0, len(items), size)]
 
 NOTE_PATH = Path(__file__).parent / "water_cycle_note.txt"
 LOG_PATH = Path(__file__).parent / "pipeline-run-log.md"
@@ -233,80 +215,8 @@ async def _generate_initial_for_concept(
     return indexed
 
 
-async def _generate_initial_batch(
-    batch: list[ConceptAllocation], offsets: dict[str, int], step_log: list[str]
-) -> dict[str, dict[int, Question]]:
-    snippets_by_concept = {a.concept: [(s.quote, s.page_number) for s in a.snippets] for a in batch}
-    expected_counts = {a.concept: a.question_count for a in batch}
-    batch_names = list(expected_counts.keys())
-    label = "+".join(batch_names)
-
-    results: dict[str, list[Question]] | None = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        concepts_block = "\n\n".join(
-            f'Concept: "{a.concept}" (write exactly {a.question_count} Questions)\n'
-            f"Snippets:\n{format_snippets(snippets_by_concept[a.concept])}"
-            for a in batch
-        )
-        prompt = build_generator_initial_batch_prompt(concepts_block)
-        total_questions = sum(expected_counts.values())
-        raw = await call_agent_async(
-            generator_initial_agent,
-            prompt,
-            f"generator-initial-batch-live-{label}-attempt{attempt}",
-            max_tokens=GENERATOR_BASE_TOKENS + total_questions * GENERATOR_PER_QUESTION_TOKENS,
-        )
-        try:
-            candidate = parse_generator_initial_batch_output(raw)
-        except (ParseError, ValidationError) as e:
-            log(step_log, f"Generator-initial-batch [{label}] attempt {attempt}: parse failure ({e}), retrying")
-            continue
-        if set(candidate.keys()) != set(batch_names):
-            log(
-                step_log,
-                f"Generator-initial-batch [{label}] attempt {attempt}: concept set mismatch "
-                f"(got {sorted(candidate.keys())}), retrying",
-            )
-            continue
-        bad_count = next((c for c in batch_names if len(candidate[c]) != expected_counts[c]), None)
-        if bad_count is not None:
-            log(
-                step_log,
-                f"Generator-initial-batch [{label}] attempt {attempt}: {bad_count} got "
-                f"{len(candidate[bad_count])}, expected {expected_counts[bad_count]}, retrying",
-            )
-            continue
-        bad_concept = next(
-            (
-                c
-                for c in batch_names
-                if any(
-                    not any(is_exact_substring(q.source_quote, s[0]) for s in snippets_by_concept[c])
-                    for q in candidate[c]
-                )
-            ),
-            None,
-        )
-        if bad_concept is not None:
-            log(step_log, f"Generator-initial-batch [{label}] attempt {attempt}: ungrounded source_quote in {bad_concept}, retrying")
-            continue
-        results = candidate
-        break
-
-    if results is None:
-        raise PipelineError(f"Generator-initial-batch failed for concepts {batch_names} after {MAX_RETRIES} attempts")
-
-    indexed_by_concept: dict[str, dict[int, Question]] = {}
-    for concept, questions in results.items():
-        start = offsets[concept]
-        indexed = {start + i: q for i, q in enumerate(questions)}
-        indexed_by_concept[concept] = indexed
-        log(step_log, f"Generator-initial-batch [{concept}]: {len(questions)} Questions, indices {sorted(indexed.keys())}")
-    return indexed_by_concept
-
-
 async def run_generator_initial(
-    allocations: list[ConceptAllocation], step_log: list[str], concurrent: bool = False, batch_size: int = 1
+    allocations: list[ConceptAllocation], step_log: list[str]
 ) -> dict[str, dict[int, Question]]:
     # Index offsets computed upfront (concept order, cumulative question_count)
     # so global indices stay correct regardless of which concurrent call
@@ -318,21 +228,9 @@ async def run_generator_initial(
         offsets[alloc.concept] = next_index
         next_index += alloc.question_count
 
-    if batch_size > 1:
-        batches = _chunk(allocations, batch_size)
-        if concurrent:
-            batch_results = await asyncio.gather(*(_generate_initial_batch(b, offsets, step_log) for b in batches))
-        else:
-            batch_results = [await _generate_initial_batch(b, offsets, step_log) for b in batches]
-        merged: dict[str, dict[int, Question]] = {}
-        for br in batch_results:
-            merged.update(br)
-        return merged
-
-    # batch_size == 1: dual-model pool (see _run_generator_pool above). Its own
-    # two-worker structure governs Generator concurrency now, independent of
-    # the `concurrent` flag (which still governs the batch_size>1 branch above
-    # and Verifier dispatch in run_verify_loop).
+    # Dual-model pool (see _run_generator_pool above) — its own two-worker
+    # structure governs Generator concurrency, independent of the pipeline's
+    # `concurrent` flag (which still governs Verifier dispatch in run_verify_loop).
     jobs = [_make_initial_job(a, offsets[a.concept], step_log) for a in allocations]
     return await _run_generator_pool(jobs, step_log, "Generator-initial-pool")
 
@@ -443,12 +341,9 @@ async def _patch_concept(
 
 
 # --- Dual-model Generator pool dispatch ---------------------------------------
-# batch_size=1 Generator work (initial pass + patch rounds) is dispatched
-# through generator_pool's two-worker queue-drain instead of a single model's
-# direct dispatch — see docs/superpowers/specs/2026-08-12-dual-model-generator-design.md.
-# Concept batching (batch_size>1) is out of that design's scope and keeps
-# using the single gpt-oss-120b generator_initial_agent/generator_patch_agent
-# untouched (_generate_initial_batch/_patch_batch below).
+# Generator work (initial pass + patch rounds) is dispatched through
+# generator_pool's two-worker queue-drain instead of a single model's direct
+# dispatch — see docs/superpowers/specs/2026-08-12-dual-model-generator-design.md.
 
 def _make_initial_job(alloc: ConceptAllocation, start_index: int, step_log: list[str]) -> generator_pool.Job:
     async def attempt(model_name: str) -> dict[int, Question]:
@@ -483,104 +378,11 @@ async def _run_generator_pool(
         raise PipelineError(str(e)) from e
 
 
-async def _verify_batch(
-    batch_concepts: list[str],
-    concept_lists: dict[str, dict[int, Question]],
-    note_text: str,
-    round_num: int,
-    step_log: list[str],
-) -> dict[str, tuple[list[VerifierIssue], bool]]:
-    relevant_pages: set[int] = set()
-    for c in batch_concepts:
-        relevant_pages |= {q.page_number for q in concept_lists[c].values()}
-    scoped_note = _extract_pages(note_text, relevant_pages)
-
-    questions_block = "\n\n".join(
-        f'Concept: "{c}"\n' + "\n\n".join(_fmt_question_for_verifier(idx, q) for idx, q in concept_lists[c].items())
-        for c in batch_concepts
-    )
-    total_questions = sum(len(concept_lists[c]) for c in batch_concepts)
-    label = "+".join(batch_concepts)
-    prompt = build_verifier_batch_prompt(scoped_note, questions_block)
-    raw = await call_agent_async(
-        verifier_agent,
-        prompt,
-        f"verifier-batch-live-round{round_num}-{label}",
-        max_tokens=VERIFIER_BASE_TOKENS + total_questions * VERIFIER_PER_QUESTION_TOKENS,
-    )
-    issues_by_concept = parse_verifier_batch_output(raw)
-
-    result: dict[str, tuple[list[VerifierIssue], bool]] = {}
-    for c in batch_concepts:
-        issues = issues_by_concept.get(c, [])
-        for issue in issues:
-            if issue.action == "patch":
-                for snip in issue.snippets:
-                    if not is_exact_substring(snip.quote, note_text):
-                        log(step_log, f"Verifier-batch round {round_num} [{c}]: fabricated fix snippet on index {issue.index}, dropping that flag")
-                        issue.snippets = [s for s in issue.snippets if is_exact_substring(s.quote, note_text)]
-        flagged = [i for i in issues if i.action == "patch"]
-        satisfactory = len(flagged) == 0
-        result[c] = (issues, satisfactory)
-        log(step_log, f"Verifier-batch round {round_num} [{c}]: satisfactory={satisfactory}, flagged={[i.index for i in flagged]}")
-    return result
-
-
-async def _patch_batch(
-    batch_flagged: dict[str, list[VerifierIssue]],
-    concept_lists: dict[str, dict[int, Question]],
-    round_num: int,
-    step_log: list[str],
-) -> dict[str, dict[int, Question]]:
-    flagged_block = "\n\n".join(
-        f'Concept: "{c}"\n'
-        + "\n\n".join(
-            _fmt_question_for_verifier(i.index, concept_lists[c][i.index])
-            + f'\ncritique: "{i.critique}"'
-            + f"\nfix_snippets: {format_snippets([(s.quote, s.page_number) for s in i.snippets])}"
-            for i in flagged
-        )
-        for c, flagged in batch_flagged.items()
-    )
-    expected_indices_by_concept = {c: {i.index for i in flagged} for c, flagged in batch_flagged.items()}
-    label = "+".join(batch_flagged.keys())
-    total_flagged = sum(len(v) for v in batch_flagged.values())
-    patched: dict[str, dict[int, Question]] | None = None
-    for attempt in range(1, MAX_RETRIES + 1):
-        prompt = build_generator_patch_batch_prompt(flagged_block)
-        raw = await call_agent_async(
-            generator_patch_agent,
-            prompt,
-            f"generator-patch-batch-live-round{round_num}-{label}-attempt{attempt}",
-            max_tokens=GENERATOR_BASE_TOKENS + total_flagged * GENERATOR_PER_QUESTION_TOKENS,
-        )
-        try:
-            candidate = parse_generator_patch_batch_output(raw)
-        except (ParseError, ValidationError) as e:
-            log(step_log, f"Patch-batch round {round_num} [{label}] attempt {attempt}: parse failure ({e}), retrying")
-            continue
-        mismatch = next(
-            (c for c in expected_indices_by_concept if set(candidate.get(c, {}).keys()) != expected_indices_by_concept[c]),
-            None,
-        )
-        if mismatch is not None:
-            log(step_log, f"Patch-batch round {round_num} [{label}] attempt {attempt}: index mismatch in {mismatch}, retrying")
-            continue
-        patched = candidate
-        break
-    if patched is None:
-        raise PipelineError(f"Generator-patch-batch failed for concepts {list(batch_flagged.keys())} round {round_num} after {MAX_RETRIES} attempts")
-    for c, idxs in patched.items():
-        log(step_log, f"Patch-batch [{c}] round {round_num}: updated indices {sorted(idxs.keys())}")
-    return patched
-
-
 async def run_verify_loop(
     concept_lists: dict[str, dict[int, Question]],
     note_text: str,
     step_log: list[str],
     concurrent: bool = False,
-    batch_size: int = 1,
 ) -> tuple[dict[str, dict[int, Question]], bool, int]:
     # Only concepts still in `pending` get a Verifier call this round — a concept
     # cleared (satisfactory) in an earlier round can't have changed since (nothing
@@ -590,29 +392,15 @@ async def run_verify_loop(
     for round_num in range(1, VERIFY_LOOP_CAP + 1):
         round_issues: dict[str, list[VerifierIssue]] = {}
 
-        if batch_size > 1:
-            batches = _chunk(sorted(pending), batch_size)
-            if concurrent:
-                batch_results = await asyncio.gather(
-                    *(_verify_batch(b, concept_lists, note_text, round_num, step_log) for b in batches)
-                )
-            else:
-                batch_results = [await _verify_batch(b, concept_lists, note_text, round_num, step_log) for b in batches]
-            for br in batch_results:
-                for concept, (issues, satisfactory) in br.items():
-                    round_issues[concept] = [i for i in issues if i.action == "patch"]
-                    if satisfactory:
-                        pending.discard(concept)
-        else:
-            verify_coros = [
-                _verify_concept(concept, concept_lists[concept], note_text, round_num, step_log)
-                for concept in pending
-            ]
-            verify_results = await asyncio.gather(*verify_coros) if concurrent else [await c for c in verify_coros]
-            for concept, issues, satisfactory in verify_results:
-                round_issues[concept] = [i for i in issues if i.action == "patch"]
-                if satisfactory:
-                    pending.discard(concept)
+        verify_coros = [
+            _verify_concept(concept, concept_lists[concept], note_text, round_num, step_log)
+            for concept in pending
+        ]
+        verify_results = await asyncio.gather(*verify_coros) if concurrent else [await c for c in verify_coros]
+        for concept, issues, satisfactory in verify_results:
+            round_issues[concept] = [i for i in issues if i.action == "patch"]
+            if satisfactory:
+                pending.discard(concept)
 
         if not pending:
             log(step_log, f"Verify loop: satisfactory after round {round_num}, exiting early")
@@ -620,27 +408,15 @@ async def run_verify_loop(
 
         flagged_concepts = {c: f for c, f in round_issues.items() if f}
 
-        if batch_size > 1:
-            patch_batches = _chunk(list(flagged_concepts.items()), batch_size)
-            if concurrent:
-                patch_results = await asyncio.gather(
-                    *(_patch_batch(dict(b), concept_lists, round_num, step_log) for b in patch_batches)
-                )
-            else:
-                patch_results = [await _patch_batch(dict(b), concept_lists, round_num, step_log) for b in patch_batches]
-            for pr in patch_results:
-                for concept, patched in pr.items():
-                    concept_lists[concept].update(patched)
-        else:
-            # Dual-model pool (see _run_generator_pool above) — same as the
-            # initial pass, independent of the `concurrent` flag.
-            jobs = [
-                _make_patch_job(concept, flagged, concept_lists, round_num, step_log)
-                for concept, flagged in flagged_concepts.items()
-            ]
-            patch_results = await _run_generator_pool(jobs, step_log, f"Generator-patch-pool-round{round_num}")
-            for concept, patched in patch_results.items():
-                concept_lists[concept].update(patched)
+        # Dual-model pool (see _run_generator_pool above) — same as the
+        # initial pass, independent of the `concurrent` flag.
+        jobs = [
+            _make_patch_job(concept, flagged, concept_lists, round_num, step_log)
+            for concept, flagged in flagged_concepts.items()
+        ]
+        patch_results = await _run_generator_pool(jobs, step_log, f"Generator-patch-pool-round{round_num}")
+        for concept, patched in patch_results.items():
+            concept_lists[concept].update(patched)
 
     log(step_log, f"Verify loop: reached {VERIFY_LOOP_CAP}-round cap without satisfactory — shipping as-is (non-blocking)")
     return concept_lists, False, VERIFY_LOOP_CAP
@@ -658,26 +434,26 @@ def freeze(concept_lists: dict[str, dict[int, Question]]) -> QuestionSet:
 
 # --- Entry point ----------------------------------------------------------------
 
-async def main(note_path: Path = NOTE_PATH, concurrent: bool = False, batch_size: int = DEFAULT_BATCH_SIZE) -> None:
+async def main(note_path: Path = NOTE_PATH, concurrent: bool = False) -> None:
     note_text = note_path.read_text(encoding="utf-8")
     step_log: list[str] = []
     run_start = datetime.datetime.now()
 
-    log(step_log, f"=== Pipeline run start (concurrent={concurrent}, batch_size={batch_size}) ===")
+    log(step_log, f"=== Pipeline run start (concurrent={concurrent}) ===")
     try:
         allocations = await run_analyzer(note_text, target_total=None, step_log=step_log)
         for a in allocations:
             log(step_log, f"Checkpoint (auto-confirmed): {a.concept!r} weight={a.weight_percentage:.2f} count={a.question_count}")
 
-        concept_lists = await run_generator_initial(allocations, step_log, concurrent=concurrent, batch_size=batch_size)
+        concept_lists = await run_generator_initial(allocations, step_log)
         concept_lists, satisfactory, rounds_used = await run_verify_loop(
-            concept_lists, note_text, step_log, concurrent=concurrent, batch_size=batch_size
+            concept_lists, note_text, step_log, concurrent=concurrent
         )
         question_set = freeze(concept_lists)
     except Exception:
         total_elapsed = (datetime.datetime.now() - run_start).total_seconds()
         log(step_log, f"=== Pipeline run FAILED after {total_elapsed:.1f}s, {call_agent.RATE_LIMIT_HITS} rate-limit hits ===")
-        _write_failure_log(run_start, step_log, total_elapsed, concurrent, batch_size, call_agent.RATE_LIMIT_HITS)
+        _write_failure_log(run_start, step_log, total_elapsed, concurrent, call_agent.RATE_LIMIT_HITS)
         raise
 
     total_elapsed = (datetime.datetime.now() - run_start).total_seconds()
@@ -688,7 +464,7 @@ async def main(note_path: Path = NOTE_PATH, concurrent: bool = False, batch_size
 
     _write_log(
         run_start, step_log, allocations, question_set, satisfactory, rounds_used,
-        total_elapsed, concurrent, batch_size, call_agent.RATE_LIMIT_HITS, quality_report,
+        total_elapsed, concurrent, call_agent.RATE_LIMIT_HITS, quality_report,
     )
 
 
@@ -697,10 +473,9 @@ def _write_failure_log(
     step_log: list[str],
     total_elapsed: float,
     concurrent: bool,
-    batch_size: int,
     rate_limit_hits: int,
 ) -> None:
-    mode_label = ("concurrent" if concurrent else "sequential") + (f", batch={batch_size}" if batch_size > 1 else "")
+    mode_label = "concurrent" if concurrent else "sequential"
     lines = [f"\n## Pipeline run {run_start.isoformat(timespec='seconds')} ({mode_label}) — FAILED\n"]
     total_input_tokens = sum(e.input_tokens for e in CALL_LOG)
     total_output_tokens = sum(e.output_tokens for e in CALL_LOG)
@@ -737,14 +512,13 @@ def _write_log(
     rounds_used: int,
     total_elapsed: float,
     concurrent: bool,
-    batch_size: int,
     rate_limit_hits: int,
     quality_report: list[str],
 ) -> None:
-    mode_label = ("concurrent" if concurrent else "sequential") + (f", batch={batch_size}" if batch_size > 1 else "")
+    mode_label = "concurrent" if concurrent else "sequential"
     lines = [f"\n## Pipeline run {run_start.isoformat(timespec='seconds')} ({mode_label})\n"]
     mode_desc = f"concurrent (capped, semaphore={call_agent.CONCURRENCY_CAP})" if concurrent else "sequential"
-    lines.append(f"- **Mode**: {mode_desc}, batch_size={batch_size}")
+    lines.append(f"- **Mode**: {mode_desc}")
     lines.append(f"- **Total time**: {total_elapsed:.1f}s")
     lines.append(f"- **Total Questions**: {len(question_set.questions)}")
     lines.append(f"- **Verify loop**: satisfactory={satisfactory} after {rounds_used} round(s)")
@@ -795,7 +569,6 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--note-file", type=Path, default=NOTE_PATH, help="Path to a note text file (defaults to water_cycle_note.txt)")
-    parser.add_argument("--concurrent", action="store_true", help="Fire per-concept (or per-batch) calls concurrently, capped by call_agent.CONCURRENCY_CAP, instead of sequentially")
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE, help="Concepts per Generator/Verifier call (default 1 = original one-call-per-concept path; >1 routes through the batched prompts)")
+    parser.add_argument("--concurrent", action="store_true", help="Fire per-concept calls concurrently, capped by call_agent.CONCURRENCY_CAP, instead of sequentially")
     args = parser.parse_args()
-    asyncio.run(main(args.note_file, concurrent=args.concurrent, batch_size=args.batch_size))
+    asyncio.run(main(args.note_file, concurrent=args.concurrent))
