@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 import test_inputs as ti
 from call_agent import (
+    CALL_LOG,
     analyzer_agent,
     build_generator_initial_prompt,
     build_generator_patch_prompt,
@@ -27,6 +28,7 @@ from call_agent import (
     verifier_agent,
 )
 from models import Question
+from pipeline import ANALYZER_MAX_TOKENS
 from parsers import (
     ParseError,
     is_exact_substring,
@@ -60,10 +62,15 @@ def md_escape(s: str) -> str:
     return s.replace("|", "\\|")
 
 
+def tokens_line() -> str:
+    e = CALL_LOG[-1]
+    return f"- **Tokens**: {e.total_tokens} ({e.input_tokens} input, {e.output_tokens} output)\n"
+
+
 async def run_analyzer_cases(sections: list[str]) -> None:
     for case in ti.ANALYZER_CASES:
         start = datetime.datetime.now()
-        raw = await call_agent_async(analyzer_agent, case["note_text"], case["label"])
+        raw = await call_agent_async(analyzer_agent, case["note_text"], case["label"], max_tokens=ANALYZER_MAX_TOKENS)
         elapsed = (datetime.datetime.now() - start).total_seconds()
 
         notes = []
@@ -85,6 +92,7 @@ async def run_analyzer_cases(sections: list[str]) -> None:
         sections.append(
             f"### Analyzer — `{case['label']}`\n\n"
             f"- **Time**: {start.isoformat(timespec='seconds')} ({elapsed:.1f}s)\n"
+            f"{tokens_line()}"
             f"- **Input**: note_text ({len(case['note_text'])} chars)\n"
             f"- **Expected**: weights sum to ~100 (±10), non-overlapping Concepts, all snippets verbatim substrings — see DESIGN.md Expected behavior\n"
             f"- **Actual output**:\n```\n{raw}\n```\n"
@@ -115,6 +123,7 @@ async def run_generator_initial_cases(sections: list[str]) -> None:
         sections.append(
             f"### Generator (initial pass) — `{case['label']}`\n\n"
             f"- **Time**: {start.isoformat(timespec='seconds')} ({elapsed:.1f}s)\n"
+            f"{tokens_line()}"
             f"- **Input**: concept={case['concept']!r}, question_count={case['question_count']}, snippets={[s[0][:60] + '...' for s in case['snippets']]}\n"
             f"- **Expected**: exactly {case['question_count']} Questions, each with source_quote an exact substring of a given snippet — see DESIGN.md Expected behavior\n"
             f"- **Actual output**:\n```\n{raw}\n```\n"
@@ -157,6 +166,7 @@ async def run_generator_patch_cases(sections: list[str]) -> None:
         sections.append(
             f"### Generator (patch pass) — `{case['label']}`\n\n"
             f"- **Time**: {start.isoformat(timespec='seconds')} ({elapsed:.1f}s)\n"
+            f"{tokens_line()}"
             f"- **Input**: concept={case['concept']!r}, flagged indices={sorted(case['flags'].keys())}\n"
             f"- **Expected**: output contains exactly the flagged indices, each once; new source_quote grounded in the *fix* snippets, not the original — see DESIGN.md Expected behavior\n"
             f"- **Actual output**:\n```\n{raw}\n```\n"
@@ -198,6 +208,7 @@ async def run_verifier_cases(sections: list[str]) -> None:
         sections.append(
             f"### Verifier — `{case['label']}`\n\n"
             f"- **Time**: {start.isoformat(timespec='seconds')} ({elapsed:.1f}s)\n"
+            f"{tokens_line()}"
             f"- **Input**: concept={case['concept']!r}, indices={sorted(case['questions'].keys())} "
             f"(expected actions: {case['expected_actions']})\n"
             f"- **Expected**: happy-path indices -> keep, adversarial indices -> patch — see DESIGN.md Expected behavior\n"
@@ -215,7 +226,14 @@ async def main() -> None:
     await run_generator_patch_cases(sections)
     await run_verifier_cases(sections)
 
-    header = f"\n## Run {run_start.isoformat(timespec='seconds')}\n\n"
+    total_input = sum(e.input_tokens for e in CALL_LOG)
+    total_output = sum(e.output_tokens for e in CALL_LOG)
+    total = sum(e.total_tokens for e in CALL_LOG)
+    header = (
+        f"\n## Run {run_start.isoformat(timespec='seconds')}\n\n"
+        f"**Total agent calls this run**: {len(CALL_LOG)}. "
+        f"**Total tokens**: {total} ({total_input} input, {total_output} output).\n\n"
+    )
     body = header + "\n".join(sections)
 
     with open(LOG_PATH, "a", encoding="utf-8") as f:

@@ -615,15 +615,21 @@ async def main(note_path: Path = NOTE_PATH, concurrent: bool = False, batch_size
     run_start = datetime.datetime.now()
 
     log(step_log, f"=== Pipeline run start (concurrent={concurrent}, batch_size={batch_size}) ===")
-    allocations = await run_analyzer(note_text, target_total=None, step_log=step_log)
-    for a in allocations:
-        log(step_log, f"Checkpoint (auto-confirmed): {a.concept!r} weight={a.weight_percentage:.2f} count={a.question_count}")
+    try:
+        allocations = await run_analyzer(note_text, target_total=None, step_log=step_log)
+        for a in allocations:
+            log(step_log, f"Checkpoint (auto-confirmed): {a.concept!r} weight={a.weight_percentage:.2f} count={a.question_count}")
 
-    concept_lists = await run_generator_initial(allocations, step_log, concurrent=concurrent, batch_size=batch_size)
-    concept_lists, satisfactory, rounds_used = await run_verify_loop(
-        concept_lists, note_text, step_log, concurrent=concurrent, batch_size=batch_size
-    )
-    question_set = freeze(concept_lists)
+        concept_lists = await run_generator_initial(allocations, step_log, concurrent=concurrent, batch_size=batch_size)
+        concept_lists, satisfactory, rounds_used = await run_verify_loop(
+            concept_lists, note_text, step_log, concurrent=concurrent, batch_size=batch_size
+        )
+        question_set = freeze(concept_lists)
+    except Exception:
+        total_elapsed = (datetime.datetime.now() - run_start).total_seconds()
+        log(step_log, f"=== Pipeline run FAILED after {total_elapsed:.1f}s, {call_agent.RATE_LIMIT_HITS} rate-limit hits ===")
+        _write_failure_log(run_start, step_log, total_elapsed, concurrent, batch_size, call_agent.RATE_LIMIT_HITS)
+        raise
 
     total_elapsed = (datetime.datetime.now() - run_start).total_seconds()
     log(step_log, f"=== Pipeline run end: {len(question_set.questions)} Questions, satisfactory={satisfactory} after {rounds_used} round(s), {total_elapsed:.1f}s total, {call_agent.RATE_LIMIT_HITS} rate-limit hits ===")
@@ -635,6 +641,42 @@ async def main(note_path: Path = NOTE_PATH, concurrent: bool = False, batch_size
         run_start, step_log, allocations, question_set, satisfactory, rounds_used,
         total_elapsed, concurrent, batch_size, call_agent.RATE_LIMIT_HITS, quality_report,
     )
+
+
+def _write_failure_log(
+    run_start: datetime.datetime,
+    step_log: list[str],
+    total_elapsed: float,
+    concurrent: bool,
+    batch_size: int,
+    rate_limit_hits: int,
+) -> None:
+    mode_label = ("concurrent" if concurrent else "sequential") + (f", batch={batch_size}" if batch_size > 1 else "")
+    lines = [f"\n## Pipeline run {run_start.isoformat(timespec='seconds')} ({mode_label}) — FAILED\n"]
+    total_input_tokens = sum(e.input_tokens for e in CALL_LOG)
+    total_output_tokens = sum(e.output_tokens for e in CALL_LOG)
+    total_tokens = sum(e.total_tokens for e in CALL_LOG)
+    lines.append(f"- **Total time before failure**: {total_elapsed:.1f}s")
+    lines.append(f"- **Total agent calls before failure**: {len(CALL_LOG)}")
+    lines.append(f"- **Rate-limit (429) hits**: {rate_limit_hits}")
+    lines.append(f"- **Total tokens before failure**: {total_tokens} ({total_input_tokens} input, {total_output_tokens} output)\n")
+
+    lines.append("### Per-call breakdown (before failure)\n")
+    lines.append("| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |")
+    lines.append("|---|---|---|---|---|---|")
+    for i, e in enumerate(CALL_LOG, start=1):
+        lines.append(f"| {i} | {e.label} | {e.elapsed_seconds:.1f} | {e.input_tokens} | {e.output_tokens} | {e.total_tokens} |")
+    lines.append("")
+
+    lines.append("### Step log (up to failure)\n```")
+    lines.extend(step_log)
+    lines.append("```\n")
+    lines.append("\n---\n")
+
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    print(f"\nWrote FAILED pipeline run (partial token log) to {LOG_PATH}")
 
 
 def _write_log(
