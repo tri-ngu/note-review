@@ -6,6 +6,7 @@ snippet validation DESIGN.md's Snippet grounding section requires before any
 snippet/source_quote is trusted.
 """
 
+import ast
 import re
 
 from models import ConceptSnippet, Question, VerifierIssue
@@ -76,10 +77,31 @@ def parse_bool(raw: str) -> bool:
 
 
 def parse_list_str(raw: str) -> list[str]:
+    """Primary format: a bracketed, double-quoted string list. `options` is
+    this function's only caller and always expects exactly 4 entries
+    (Question.exactly_four_options enforces this downstream regardless of
+    what this function returns) — if the strict double-quote count isn't 4,
+    falls back to parsing the bracketed text as a Python list literal via
+    ast.literal_eval, which correctly handles single-quoted or mixed-quote
+    strings, including internal apostrophes, unlike a naive quote-character
+    replace. literal_eval only evaluates literals (no code execution risk);
+    any failure or a non-list-of-str result falls back to the strict result
+    unchanged, so this can only recover cases the strict parser would
+    already have rejected — never accept something the strict parser would
+    have parsed differently."""
     raw = raw.strip()
     if not (raw.startswith("[") and raw.endswith("]")):
         raise ParseError(f"expected a bracketed list, got {raw!r}")
-    return [unescape(s) for s in _QUOTED_RE.findall(raw)]
+    strict = [unescape(s) for s in _QUOTED_RE.findall(raw)]
+    if len(strict) == 4:
+        return strict
+    try:
+        literal = ast.literal_eval(raw)
+    except (ValueError, SyntaxError, MemoryError, RecursionError, TypeError):
+        return strict
+    if isinstance(literal, list) and all(isinstance(x, str) for x in literal):
+        return literal
+    return strict
 
 
 def parse_list_int(raw: str) -> list[int]:
