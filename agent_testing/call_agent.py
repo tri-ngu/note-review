@@ -340,6 +340,31 @@ generator_initial_agent = Agent(name="Generator (initial)", instructions=GENERIC
 generator_patch_agent = Agent(name="Generator (patch)", instructions=GENERIC_INSTRUCTIONS, model=_model)
 verifier_agent = Agent(name="Verifier", instructions=GENERIC_INSTRUCTIONS, model=_model)
 
+# Dual-model Generator pool wiring — per
+# docs/superpowers/specs/2026-08-12-dual-model-generator-design.md: the
+# Generator (batch_size=1 path only — see pipeline.py/generator_pool.py) runs
+# on these two models via a two-worker pool, instead of gpt-oss-120b alone.
+# Analyzer, Verifier, and the batch_size>1 Concept-batching path all stay on
+# gpt-oss-120b (_model/MODEL above), untouched.
+GENERATOR_MODEL_NAMES = ("llama-3.3-70b-versatile", "openai/gpt-oss-20b")
+
+_generator_models = {
+    name: OpenAIChatCompletionsModel(model=name, openai_client=_client) for name in GENERATOR_MODEL_NAMES
+}
+
+# One Agent per (model, pass) — four total. Call labels built by pipeline.py/
+# generator_pool.py's call sites include the model name so CALL_LOG entries
+# identify which model produced a given result even though multiple Agents
+# share this dict's structure.
+generator_initial_agents = {
+    name: Agent(name=f"Generator (initial, {name})", instructions=GENERIC_INSTRUCTIONS, model=model)
+    for name, model in _generator_models.items()
+}
+generator_patch_agents = {
+    name: Agent(name=f"Generator (patch, {name})", instructions=GENERIC_INSTRUCTIONS, model=model)
+    for name, model in _generator_models.items()
+}
+
 
 def format_snippets(snippets: list[tuple[str, int]]) -> str:
     """snippets: list of (quote, page_number) -> ["quote" : N] lines."""
