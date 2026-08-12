@@ -26,6 +26,8 @@ from pathlib import Path
 from pydantic import ValidationError
 
 import call_agent
+import generator_pool
+from agents import Agent
 from call_agent import (
     CALL_LOG,
     analyzer_agent,
@@ -189,44 +191,46 @@ def _derive_question_counts(parsed: list[dict], total: int) -> list[int]:
 # --- Generator initial pass --------------------------------------------------
 
 async def _generate_initial_for_concept(
-    alloc: ConceptAllocation, start_index: int, step_log: list[str]
-) -> tuple[str, dict[int, Question]]:
+    alloc: ConceptAllocation, start_index: int, step_log: list[str], agent: Agent, model_label: str
+) -> dict[int, Question]:
     snippets = [(s.quote, s.page_number) for s in alloc.snippets]
     questions: list[Question] | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         prompt = build_generator_initial_prompt(alloc.concept, alloc.question_count, snippets)
         raw = await call_agent_async(
-            generator_initial_agent,
+            agent,
             prompt,
-            f"generator-initial-live-{alloc.concept}-attempt{attempt}",
+            f"generator-initial-live-{alloc.concept}-{model_label}-attempt{attempt}",
             max_tokens=GENERATOR_BASE_TOKENS + alloc.question_count * GENERATOR_PER_QUESTION_TOKENS,
         )
         try:
             candidate = parse_generator_initial_output(raw, alloc.concept)
         except (ParseError, ValidationError) as e:
-            log(step_log, f"Generator-initial [{alloc.concept}] attempt {attempt}: parse failure ({e}), retrying")
+            log(step_log, f"Generator-initial [{alloc.concept}] ({model_label}) attempt {attempt}: parse failure ({e}), retrying")
             continue
         if len(candidate) != alloc.question_count:
             log(
                 step_log,
-                f"Generator-initial [{alloc.concept}] attempt {attempt}: got {len(candidate)}, "
+                f"Generator-initial [{alloc.concept}] ({model_label}) attempt {attempt}: got {len(candidate)}, "
                 f"expected {alloc.question_count}, retrying",
             )
             continue
         snippet_texts = [s[0] for s in snippets]
         bad = next((q for q in candidate if not any(is_exact_substring(q.source_quote, s) for s in snippet_texts)), None)
         if bad is not None:
-            log(step_log, f"Generator-initial [{alloc.concept}] attempt {attempt}: ungrounded source_quote, retrying")
+            log(step_log, f"Generator-initial [{alloc.concept}] ({model_label}) attempt {attempt}: ungrounded source_quote, retrying")
             continue
         questions = candidate
         break
 
     if questions is None:
-        raise PipelineError(f"Generator-initial failed for concept {alloc.concept!r} after {MAX_RETRIES} attempts")
+        raise PipelineError(
+            f"Generator-initial failed for concept {alloc.concept!r} on model {model_label!r} after {MAX_RETRIES} attempts"
+        )
 
     indexed = {start_index + i: q for i, q in enumerate(questions)}
-    log(step_log, f"Generator-initial [{alloc.concept}]: {len(questions)} Questions, indices {sorted(indexed.keys())}")
-    return alloc.concept, indexed
+    log(step_log, f"Generator-initial [{alloc.concept}] ({model_label}): {len(questions)} Questions, indices {sorted(indexed.keys())}")
+    return indexed
 
 
 async def _generate_initial_batch(
@@ -325,14 +329,12 @@ async def run_generator_initial(
             merged.update(br)
         return merged
 
-    if concurrent:
-        results = await asyncio.gather(
-            *(_generate_initial_for_concept(a, offsets[a.concept], step_log) for a in allocations)
-        )
-    else:
-        results = [await _generate_initial_for_concept(a, offsets[a.concept], step_log) for a in allocations]
-
-    return dict(results)
+    # batch_size == 1: dual-model pool (see _run_generator_pool above). Its own
+    # two-worker structure governs Generator concurrency now, independent of
+    # the `concurrent` flag (which still governs the batch_size>1 branch above
+    # and Verifier dispatch in run_verify_loop).
+    jobs = [_make_initial_job(a, offsets[a.concept], step_log) for a in allocations]
+    return await _run_generator_pool(jobs, step_log, "Generator-initial-pool")
 
 
 # --- Verify loop --------------------------------------------------------------
@@ -403,7 +405,9 @@ async def _patch_concept(
     concept_lists: dict[str, dict[int, Question]],
     round_num: int,
     step_log: list[str],
-) -> tuple[str, dict[int, Question]]:
+    agent: Agent,
+    model_label: str,
+) -> dict[int, Question]:
     flagged_text = "\n\n".join(
         _fmt_question_for_verifier(i.index, concept_lists[concept][i.index])
         + f'\ncritique: "{i.critique}"'
@@ -415,25 +419,68 @@ async def _patch_concept(
     patched: dict[int, Question] | None = None
     for attempt in range(1, MAX_RETRIES + 1):
         raw = await call_agent_async(
-            generator_patch_agent,
+            agent,
             prompt,
-            f"generator-patch-live-round{round_num}-{concept}-attempt{attempt}",
+            f"generator-patch-live-round{round_num}-{concept}-{model_label}-attempt{attempt}",
             max_tokens=GENERATOR_BASE_TOKENS + len(flagged) * GENERATOR_PER_QUESTION_TOKENS,
         )
         try:
             candidate = parse_generator_patch_output(raw, concept)
         except (ParseError, ValidationError) as e:
-            log(step_log, f"Patch [{concept}] round {round_num} attempt {attempt}: parse failure ({e}), retrying")
+            log(step_log, f"Patch [{concept}] round {round_num} ({model_label}) attempt {attempt}: parse failure ({e}), retrying")
             continue
         if set(candidate.keys()) != flagged_indices:
-            log(step_log, f"Patch [{concept}] round {round_num} attempt {attempt}: index mismatch, retrying")
+            log(step_log, f"Patch [{concept}] round {round_num} ({model_label}) attempt {attempt}: index mismatch, retrying")
             continue
         patched = candidate
         break
     if patched is None:
-        raise PipelineError(f"Generator-patch failed for concept {concept!r} round {round_num} after {MAX_RETRIES} attempts")
-    log(step_log, f"Patch [{concept}] round {round_num}: updated indices {sorted(patched.keys())}")
-    return concept, patched
+        raise PipelineError(
+            f"Generator-patch failed for concept {concept!r} on model {model_label!r} round {round_num} after {MAX_RETRIES} attempts"
+        )
+    log(step_log, f"Patch [{concept}] round {round_num} ({model_label}): updated indices {sorted(patched.keys())}")
+    return patched
+
+
+# --- Dual-model Generator pool dispatch ---------------------------------------
+# batch_size=1 Generator work (initial pass + patch rounds) is dispatched
+# through generator_pool's two-worker queue-drain instead of a single model's
+# direct dispatch — see docs/superpowers/specs/2026-08-12-dual-model-generator-design.md.
+# Concept batching (batch_size>1) is out of that design's scope and keeps
+# using the single gpt-oss-120b generator_initial_agent/generator_patch_agent
+# untouched (_generate_initial_batch/_patch_batch below).
+
+def _make_initial_job(alloc: ConceptAllocation, start_index: int, step_log: list[str]) -> generator_pool.Job:
+    async def attempt(model_name: str) -> dict[int, Question]:
+        agent = call_agent.generator_initial_agents[model_name]
+        return await _generate_initial_for_concept(alloc, start_index, step_log, agent, model_name)
+
+    return generator_pool.Job(key=alloc.concept, attempt=attempt)
+
+
+def _make_patch_job(
+    concept: str,
+    flagged: list[VerifierIssue],
+    concept_lists: dict[str, dict[int, Question]],
+    round_num: int,
+    step_log: list[str],
+) -> generator_pool.Job:
+    async def attempt(model_name: str) -> dict[int, Question]:
+        agent = call_agent.generator_patch_agents[model_name]
+        return await _patch_concept(concept, flagged, concept_lists, round_num, step_log, agent, model_name)
+
+    return generator_pool.Job(key=concept, attempt=attempt)
+
+
+async def _run_generator_pool(
+    jobs: list[generator_pool.Job], step_log: list[str], stage_label: str
+) -> dict[str, dict[int, Question]]:
+    try:
+        return await generator_pool.drain_pool(
+            jobs, call_agent.GENERATOR_MODEL_NAMES, lambda msg: log(step_log, msg), stage_label
+        )
+    except generator_pool.GeneratorPoolError as e:
+        raise PipelineError(str(e)) from e
 
 
 async def _verify_batch(
@@ -585,12 +632,14 @@ async def run_verify_loop(
                 for concept, patched in pr.items():
                     concept_lists[concept].update(patched)
         else:
-            patch_coros = [
-                _patch_concept(concept, flagged, concept_lists, round_num, step_log)
+            # Dual-model pool (see _run_generator_pool above) — same as the
+            # initial pass, independent of the `concurrent` flag.
+            jobs = [
+                _make_patch_job(concept, flagged, concept_lists, round_num, step_log)
                 for concept, flagged in flagged_concepts.items()
             ]
-            patch_results = await asyncio.gather(*patch_coros) if concurrent else [await c for c in patch_coros]
-            for concept, patched in patch_results:
+            patch_results = await _run_generator_pool(jobs, step_log, f"Generator-patch-pool-round{round_num}")
+            for concept, patched in patch_results.items():
                 concept_lists[concept].update(patched)
 
     log(step_log, f"Verify loop: reached {VERIFY_LOOP_CAP}-round cap without satisfactory — shipping as-is (non-blocking)")
