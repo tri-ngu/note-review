@@ -157,6 +157,9 @@ Output format:
 - Output nothing but the Question blocks — no preamble, no closing remarks
 - Wrap the entire output between --START-- and --END-- markers, exactly as
   shown in the example below
+- Use double quotes only for every string value — question_text, each
+  options entry, explanation, and source_quote. Never use single quotes,
+  including when writing the options list in a Python-list-like style.
 
 --START--
 question_text: "Which process describes liquid water turning into vapor?"
@@ -234,6 +237,9 @@ Output format:
 - Only output the fixed version of each Question — do not also output its pre-fix fields
 - Wrap the entire output between --START-- and --END-- markers, exactly as
   shown in the example below
+- Use double quotes only for every string value — question_text, each
+  options entry, explanation, and source_quote. Never use single quotes,
+  including when writing the options list in a Python-list-like style.
 
 --START--
 index: 5
