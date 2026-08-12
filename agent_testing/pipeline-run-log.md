@@ -1853,3 +1853,369 @@ options
 - [PASS] Q27: source_quote is a real (whitespace-normalized) substring of the Note
 
 ---
+
+## Pipeline run 2026-08-12T15:59:34 (sequential)
+
+- **Mode**: sequential, batch_size=1
+- **Total time**: 244.0s
+- **Total Questions**: 24
+- **Verify loop**: satisfactory=True after 3 round(s)
+- **Total agent calls this run**: 24
+- **Rate-limit (429) hits**: 0
+- **Total tokens**: 49437 (29949 input, 19488 output)
+
+### Per-call breakdown
+
+| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |
+|---|---|---|---|---|---|
+| 1 | analyzer-live-attempt1 | 8.9 | 1383 | 3590 | 4973 |
+| 2 | generator-initial-live-Water cycle overview-llama-3.3-70b-versatile-attempt1 | 1.4 | 841 | 547 | 1388 |
+| 3 | generator-initial-live-Evaporation-openai/gpt-oss-20b-attempt1 | 2.6 | 911 | 1449 | 2360 |
+| 4 | generator-initial-live-Transpiration and evapotranspiration-llama-3.3-70b-versatile-attempt1 | 1.3 | 830 | 403 | 1233 |
+| 5 | generator-initial-live-Condensation and cloud formation-llama-3.3-70b-versatile-attempt1 | 0.8 | 847 | 245 | 1092 |
+| 6 | generator-initial-live-Precipitation (amount, distribution, and forms)-llama-3.3-70b-versatile-attempt1 | 1.0 | 864 | 329 | 1193 |
+| 7 | generator-initial-live-Infiltration and groundwater-llama-3.3-70b-versatile-attempt1 | 1.0 | 865 | 372 | 1237 |
+| 8 | generator-initial-live-Collection (water storage and cycle reset)-llama-3.3-70b-versatile-attempt1 | 1.5 | 856 | 581 | 1437 |
+| 9 | generator-initial-live-Collection (water storage and cycle reset)-llama-3.3-70b-versatile-attempt2 | 1.6 | 856 | 659 | 1515 |
+| 10 | generator-initial-live-Surface runoff-openai/gpt-oss-20b-attempt1 | 13.6 | 878 | 1588 | 2466 |
+| 11 | verifier-live-round1-Surface runoff | 9.8 | 1406 | 439 | 1845 |
+| 12 | verifier-live-round1-Collection (water storage and cycle reset) | 37.2 | 1731 | 1614 | 3345 |
+| 13 | verifier-live-round1-Condensation and cloud formation | 1.9 | 1147 | 667 | 1814 |
+| 14 | verifier-live-round1-Transpiration and evapotranspiration | 30.2 | 1537 | 626 | 2163 |
+| 15 | verifier-live-round1-Infiltration and groundwater | 6.6 | 1443 | 439 | 1882 |
+| 16 | verifier-live-round1-Water cycle overview | 29.1 | 1684 | 1018 | 2702 |
+| 17 | verifier-live-round1-Precipitation (amount, distribution, and forms) | 15.3 | 1535 | 645 | 2180 |
+| 18 | verifier-live-round1-Evaporation | 15.8 | 1515 | 498 | 2013 |
+| 19 | generator-patch-live-round1-Collection (water storage and cycle reset)-llama-3.3-70b-versatile-attempt1 | 0.6 | 1315 | 166 | 1481 |
+| 20 | generator-patch-live-round1-Water cycle overview-openai/gpt-oss-20b-attempt1 | 1.5 | 1263 | 491 | 1754 |
+| 21 | verifier-live-round2-Collection (water storage and cycle reset) | 15.4 | 1699 | 1173 | 2872 |
+| 22 | verifier-live-round2-Water cycle overview | 20.0 | 1638 | 516 | 2154 |
+| 23 | generator-patch-live-round2-Collection (water storage and cycle reset)-llama-3.3-70b-versatile-attempt1 | 0.6 | 1232 | 140 | 1372 |
+| 24 | verifier-live-round3-Collection (water storage and cycle reset) | 35.6 | 1673 | 1293 | 2966 |
+
+### Checkpoint allocation
+
+| Concept | Weight % | Question count |
+|---|---|---|
+| Water cycle overview | 18.00 | 4 |
+| Evaporation | 12.00 | 3 |
+| Transpiration and evapotranspiration | 8.00 | 3 |
+| Surface runoff | 9.00 | 2 |
+| Condensation and cloud formation | 10.00 | 2 |
+| Precipitation (amount, distribution, and forms) | 14.00 | 3 |
+| Infiltration and groundwater | 13.00 | 3 |
+| Collection (water storage and cycle reset) | 16.00 | 4 |
+
+### Step log
+```
+[2026-08-12T15:59:34] === Pipeline run start (concurrent=False, batch_size=1) ===
+[2026-08-12T15:59:43] Analyzer attempt 1: OK, 8 concepts
+[2026-08-12T15:59:43] Target total question_count: 24 (default = 3 x 8 concepts)
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Water cycle overview' weight=18.00 count=4
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Evaporation' weight=12.00 count=3
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Transpiration and evapotranspiration' weight=8.00 count=3
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Surface runoff' weight=9.00 count=2
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Condensation and cloud formation' weight=10.00 count=2
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Precipitation (amount, distribution, and forms)' weight=14.00 count=3
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Infiltration and groundwater' weight=13.00 count=3
+[2026-08-12T15:59:43] Checkpoint (auto-confirmed): 'Collection (water storage and cycle reset)' weight=16.00 count=4
+[2026-08-12T15:59:44] Generator-initial [Water cycle overview] (llama-3.3-70b-versatile): 4 Questions, indices [1, 2, 3, 4]
+[2026-08-12T15:59:45] Generator-initial [Evaporation] (openai/gpt-oss-20b): 3 Questions, indices [5, 6, 7]
+[2026-08-12T15:59:45] Generator-initial [Transpiration and evapotranspiration] (llama-3.3-70b-versatile): 3 Questions, indices [8, 9, 10]
+[2026-08-12T15:59:46] Generator-initial [Condensation and cloud formation] (llama-3.3-70b-versatile): 2 Questions, indices [13, 14]
+[2026-08-12T15:59:47] Generator-initial [Precipitation (amount, distribution, and forms)] (llama-3.3-70b-versatile): 3 Questions, indices [15, 16, 17]
+[2026-08-12T15:59:48] Generator-initial [Infiltration and groundwater] (llama-3.3-70b-versatile): 3 Questions, indices [18, 19, 20]
+[2026-08-12T15:59:50] Generator-initial [Collection (water storage and cycle reset)] (llama-3.3-70b-versatile) attempt 1: ungrounded source_quote, retrying
+[2026-08-12T15:59:51] Generator-initial [Collection (water storage and cycle reset)] (llama-3.3-70b-versatile): 4 Questions, indices [21, 22, 23, 24]
+[2026-08-12T15:59:59] Generator-initial [Surface runoff] (openai/gpt-oss-20b): 2 Questions, indices [11, 12]
+[2026-08-12T16:00:09] Verifier round 1 [Surface runoff]: satisfactory=True, flagged=[]
+[2026-08-12T16:00:46] Verifier round 1 [Collection (water storage and cycle reset)]: satisfactory=False, flagged=[24]
+[2026-08-12T16:00:48] Verifier round 1 [Condensation and cloud formation]: satisfactory=True, flagged=[]
+[2026-08-12T16:01:18] Verifier round 1 [Transpiration and evapotranspiration]: satisfactory=True, flagged=[]
+[2026-08-12T16:01:24] Verifier round 1 [Infiltration and groundwater]: satisfactory=True, flagged=[]
+[2026-08-12T16:01:54] Verifier round 1 [Water cycle overview]: satisfactory=False, flagged=[4]
+[2026-08-12T16:02:09] Verifier round 1 [Precipitation (amount, distribution, and forms)]: satisfactory=True, flagged=[]
+[2026-08-12T16:02:25] Verifier round 1 [Evaporation]: satisfactory=True, flagged=[]
+[2026-08-12T16:02:25] Patch [Collection (water storage and cycle reset)] round 1 (llama-3.3-70b-versatile): updated indices [24]
+[2026-08-12T16:02:26] Patch [Water cycle overview] round 1 (openai/gpt-oss-20b): updated indices [4]
+[2026-08-12T16:02:42] Verifier round 2 [Collection (water storage and cycle reset)]: satisfactory=False, flagged=[24]
+[2026-08-12T16:03:02] Verifier round 2 [Water cycle overview]: satisfactory=True, flagged=[]
+[2026-08-12T16:03:02] Patch [Collection (water storage and cycle reset)] round 2 (llama-3.3-70b-versatile): updated indices [24]
+[2026-08-12T16:03:38] Verifier round 3 [Collection (water storage and cycle reset)]: satisfactory=True, flagged=[]
+[2026-08-12T16:03:38] Verify loop: satisfactory after round 3, exiting early
+[2026-08-12T16:03:38] === Pipeline run end: 24 Questions, satisfactory=True after 3 round(s), 244.0s total, 0 rate-limit hits ===
+```
+
+### Final QuestionSet
+
+**1.** [Water cycle overview] What is another name for the water cycle?
+- options: ['Hydrologic process', 'Hydrologic cycle', 'Water movement', 'Atmospheric cycle'], correct: [2], select_all: False
+- explanation: The water cycle is also called the hydrologic cycle, as it describes the continuous movement of water on, above, and below the surface of the Earth.
+- page 1, source_quote: 'The water cycle, also called the hydrologic cycle, describes the continuous movement of water on, above, and below the surface of the Earth.'
+
+**2.** [Water cycle overview] What happens to water during the water cycle?
+- options: ['It is created and destroyed', 'It is only created', 'It is neither created nor destroyed, it simply changes form and location', 'It is only destroyed'], correct: [3], select_all: False
+- explanation: Water is neither created nor destroyed in the water cycle, it simply changes form and location, moving between the atmosphere, land, and oceans in a repeating cycle driven by solar energy and gravity.
+- page 1, source_quote: 'Water is neither created nor destroyed in this process — it simply changes form and location, moving between the atmosphere, land, and oceans in a repeating cycle driven by solar energy and gravity.'
+
+**3.** [Water cycle overview] What drives the water cycle?
+- options: ['Solar energy and gravity', 'Only solar energy', 'Only gravity', 'Neither solar energy nor gravity'], correct: [1], select_all: False
+- explanation: The water cycle is driven by solar energy and gravity, as it describes the continuous movement of water on, above, and below the surface of the Earth.
+- page 1, source_quote: 'it simply changes form and location, moving between the atmosphere, land, and oceans in a repeating cycle driven by solar energy and gravity.'
+
+**4.** [Water cycle overview] Where does the water move during the water cycle?
+- options: ['Only on the surface of the Earth', 'Only below the surface of the Earth', 'Between the atmosphere, land, and oceans', 'Only in the atmosphere'], correct: [3], select_all: False
+- explanation: The water cycle involves water moving between the atmosphere, land, and oceans.
+- page 1, source_quote: 'moving between the atmosphere, land, and oceans'
+
+**5.** [Evaporation] What best describes the process by which liquid water changes into vapor and rises into the atmosphere?
+- options: ['Evaporation', 'Condensation', 'Precipitation', 'Transpiration'], correct: [1], select_all: False
+- explanation: Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere.
+- page 1, source_quote: 'Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere.'
+
+**6.** [Evaporation] What percentage of the moisture in the atmosphere originates from evaporation off the surface of oceans?
+- options: ['90 percent', '70 percent', '50 percent', '10 percent'], correct: [1], select_all: False
+- explanation: Approximately 90 percent of the moisture in the atmosphere comes from evaporation off the surface of oceans, with the remaining 10 percent contributed by other sources such as lakes, rivers, and transpiration.
+- page 1, source_quote: 'Approximately 90 percent of the moisture in the atmosphere comes from evaporation off the surface of oceans, with the remaining 10 percent contributed by other sources such as lakes, rivers, and transpiration.'
+
+**7.** [Evaporation] What provides the energy needed for evaporation?
+- options: ["The sun's heat", 'Wind', 'Ground temperature', 'Cloud condensation'], correct: [1], select_all: False
+- explanation: The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers, which together account for the vast majority of water entering the atmosphere.
+- page 1, source_quote: "The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers, which together account for the vast majority of water entering the atmosphere."
+
+**8.** [Transpiration and evapotranspiration] What is transpiration in the context of plants and the atmosphere?
+- options: ['The process of plants releasing water vapor from their roots', 'The process of plants releasing water vapor from their leaves into the atmosphere', 'The process of plants absorbing water from the soil', 'The process of plants releasing heat into the atmosphere'], correct: [2], select_all: False
+- explanation: Transpiration is a process in which plants release water vapor from their leaves into the atmosphere.
+- page 1, source_quote: 'Transpiration is a related but distinct process in which plants release water vapor from their leaves into the atmosphere.'
+
+**9.** [Transpiration and evapotranspiration] Why do scientists often combine evaporation and transpiration into a single term?
+- options: ['Because they are two completely separate processes', 'Because evaporation only occurs in non-vegetated areas', 'Because they are difficult to measure separately in vegetated areas', 'Because transpiration is a more important process'], correct: [3], select_all: False
+- explanation: Scientists often combine evaporation and transpiration into a single term because they are difficult to measure separately in vegetated areas.
+- page 1, source_quote: 'Because evaporation and transpiration are difficult to measure separately in vegetated areas, scientists often combine them into a single term: evapotranspiration.'
+
+**10.** [Transpiration and evapotranspiration] What term do scientists use to describe the combination of evaporation and transpiration?
+- options: ['Evapotranspiration', 'Transpiration', 'Evaporation', 'Water cycle'], correct: [1], select_all: False
+- explanation: The term evapotranspiration is used to describe the combination of evaporation and transpiration.
+- page 1, source_quote: 'Because evaporation and transpiration are difficult to measure separately in vegetated areas, scientists often combine them into a single term: evapotranspiration.'
+
+**11.** [Surface runoff] Where does surface runoff ultimately return liquid water?
+- options: ['into underground aquifers', 'into the atmosphere as vapor', 'into streams, rivers, oceans, or lakes', 'into the soil for evaporation'], correct: [3], select_all: False
+- explanation: Surface runoff occurs when water flows over the land's surface into streams, rivers, and eventually back into oceans or lakes, completing the visible portion of the cycle.
+- page 1, source_quote: "Surface runoff occurs when water flows over the land's surface into streams, rivers, and eventually back into oceans or lakes, completing the visible portion of the cycle."
+
+**12.** [Surface runoff] Which of the following can be carried by runoff as it moves downhill?
+- options: ['sediment', 'nutrients', 'pollutants', 'rainfall'], correct: [1, 2, 3], select_all: True
+- explanation: Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill.
+- page 1, source_quote: 'Runoff is the primary way that liquid water returns to bodies of water, and it can carry sediment, nutrients, and pollutants along with it as it moves downhill.'
+
+**13.** [Condensation and cloud formation] What is the process by which water vapor cools and changes back into liquid water droplets?
+- options: ['Evaporation', 'Condensation', 'Infiltration', 'Runoff'], correct: [2], select_all: False
+- explanation: Condensation is the process by which water vapor cools and changes back into liquid water droplets.
+- page 2, source_quote: 'Condensation is the process by which water vapor cools and changes back into liquid water droplets.'
+
+**14.** [Condensation and cloud formation] What happens to the water droplets formed through condensation in the air?
+- options: ['They gather around tiny particles of dust, salt, or smoke', 'They immediately fall to the ground', 'They evaporate back into water vapor', 'They stay suspended in the air forever'], correct: [1], select_all: False
+- explanation: These droplets gather around tiny particles of dust, salt, or smoke in the air, forming clouds.
+- page 2, source_quote: 'These droplets gather around tiny particles of dust, salt, or smoke in the air, forming clouds.'
+
+**15.** [Precipitation (amount, distribution, and forms)] What is the primary way water returns from the atmosphere to the Earth's surface?
+- options: ['Runoff', 'Infiltration', 'Precipitation', 'Evaporation'], correct: [3], select_all: False
+- explanation: Precipitation is the primary way water returns from the atmosphere to the Earth's surface.
+- page 2, source_quote: "Precipitation is the primary way water returns from the atmosphere to the Earth's surface."
+
+**16.** [Precipitation (amount, distribution, and forms)] What percentage of the Earth's annual precipitation falls over land?
+- options: ['50 percent', '22 percent', '78 percent', '90 percent'], correct: [2], select_all: False
+- explanation: The remaining 22 percent of the Earth's annual precipitation falls over land.
+- page 2, source_quote: 'roughly 78 percent of which falls over the oceans and the remaining 22 percent over land.'
+
+**17.** [Precipitation (amount, distribution, and forms)] What forms can precipitation take depending on atmospheric temperature?
+- options: ['Rain, snow, sleet, or hail', 'Rain, snow, or evaporation', 'Sleet, hail, or fog', 'Snow, hail, or cloud'], correct: [1], select_all: False
+- explanation: Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail.
+- page 3, source_quote: 'Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail.'
+
+**18.** [Infiltration and groundwater] What is the process by which water moves through soil and rock layers to become groundwater?
+- options: ['Runoff', 'Infiltration', 'Evaporation', 'Condensation'], correct: [2], select_all: False
+- explanation: Infiltration is the process by which water soaks into the ground, moving through soil and rock layers to become groundwater.
+- page 3, source_quote: 'Infiltration is the process by which water soaks into the ground, moving through soil and rock layers to become groundwater.'
+
+**19.** [Infiltration and groundwater] Where is groundwater stored?
+- options: ['Lakes', 'Rivers', 'Underground formations called aquifers', 'Ocean'], correct: [3], select_all: False
+- explanation: Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years.
+- page 3, source_quote: 'Groundwater is stored in underground formations called aquifers, which can hold water for long periods of time — in some cases, thousands of years.'
+
+**20.** [Infiltration and groundwater] What happens to groundwater as it slowly moves through the ground?
+- options: ['It disappears', 'It evaporates immediately', 'It can eventually resurface through springs or be drawn up by plant roots', 'It stays still'], correct: [3], select_all: False
+- explanation: Groundwater slowly moves through the ground and can eventually resurface through springs or be drawn up by plant roots, contributing to transpiration described earlier.
+- page 3, source_quote: 'Groundwater slowly moves through the ground and can eventually resurface through springs or be drawn up by plant roots, contributing to transpiration described earlier.'
+
+**21.** [Collection (water storage and cycle reset)] What is the term that refers to the accumulation of water in oceans, lakes, rivers, and groundwater reservoirs?
+- options: ['Collection', 'Evaporation', 'Condensation', 'Runoff'], correct: [1], select_all: False
+- explanation: Collection refers broadly to the accumulation of water in oceans, lakes, rivers, and groundwater reservoirs, where it will eventually evaporate again and restart the cycle.
+- page 3, source_quote: 'Collection refers broadly to the accumulation of water in oceans, lakes, rivers, and groundwater reservoirs, where it will eventually evaporate again and restart the cycle.'
+
+**22.** [Collection (water storage and cycle reset)] Which of the following statements is true about the collection stage of the water cycle?
+- options: ['It is the starting point of the water cycle', 'It is the closing stage of one cycle and the starting point of the next', 'It occurs only in oceans', "It is the process by which water evaporates from the sun's heat"], correct: [2], select_all: False
+- explanation: Because the water cycle has no true beginning or end, collection is often considered the closing stage of one cycle and the starting point of the next, as accumulated water is once again exposed to solar energy and begins to evaporate.
+- page 3, source_quote: 'Because the water cycle has no true beginning or end, collection is often considered the closing stage of one cycle and the starting point of the next, as accumulated water is once again exposed to solar energy and begins to evaporate.'
+
+**23.** [Collection (water storage and cycle reset)] What happens to the accumulated water in collection during the water cycle?
+- options: ['It gets frozen', 'It gets absorbed by plants', 'It will eventually evaporate again and restart the cycle', 'It gets lost in space'], correct: [3], select_all: False
+- explanation: Collection refers broadly to the accumulation of water in oceans, lakes, rivers, and groundwater reservoirs, where it will eventually evaporate again and restart the cycle.
+- page 3, source_quote: 'Collection refers broadly to the accumulation of water in oceans, lakes, rivers, and groundwater reservoirs, where it will eventually evaporate again and restart the cycle.'
+
+**24.** [Collection (water storage and cycle reset)] What characterizes the collection stage of the water cycle?
+- options: ['It has a true beginning and end', "It is the process by which water evaporates from the sun's heat", 'It is the closing stage of one cycle and the starting point of the next', 'It occurs only in oceans'], correct: [3], select_all: False
+- explanation: collection is often considered the closing stage of one cycle and the starting point of the next
+- page 3, source_quote: 'collection is often considered the closing stage of one cycle and the starting point of the next'
+
+### Quality check
+
+**Quality check: 145 passed, 0 failed** (out of 145 structural checks against requirements.md)
+- Verify loop: Verify loop reached satisfactory=true after 3 round(s).
+- [PASS] Total question_count matches locked checkpoint total — got 24, expected 24
+- [PASS] Q1: exactly 4 options — got 4
+- [PASS] Q1: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q1: explanation non-empty
+- [PASS] Q1: concept matches a confirmed checkpoint allocation
+- [PASS] Q1: page_number is a real page in the Note
+- [PASS] Q1: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q2: exactly 4 options — got 4
+- [PASS] Q2: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q2: explanation non-empty
+- [PASS] Q2: concept matches a confirmed checkpoint allocation
+- [PASS] Q2: page_number is a real page in the Note
+- [PASS] Q2: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q3: exactly 4 options — got 4
+- [PASS] Q3: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q3: explanation non-empty
+- [PASS] Q3: concept matches a confirmed checkpoint allocation
+- [PASS] Q3: page_number is a real page in the Note
+- [PASS] Q3: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q4: exactly 4 options — got 4
+- [PASS] Q4: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q4: explanation non-empty
+- [PASS] Q4: concept matches a confirmed checkpoint allocation
+- [PASS] Q4: page_number is a real page in the Note
+- [PASS] Q4: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q5: exactly 4 options — got 4
+- [PASS] Q5: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q5: explanation non-empty
+- [PASS] Q5: concept matches a confirmed checkpoint allocation
+- [PASS] Q5: page_number is a real page in the Note
+- [PASS] Q5: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q6: exactly 4 options — got 4
+- [PASS] Q6: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q6: explanation non-empty
+- [PASS] Q6: concept matches a confirmed checkpoint allocation
+- [PASS] Q6: page_number is a real page in the Note
+- [PASS] Q6: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q7: exactly 4 options — got 4
+- [PASS] Q7: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q7: explanation non-empty
+- [PASS] Q7: concept matches a confirmed checkpoint allocation
+- [PASS] Q7: page_number is a real page in the Note
+- [PASS] Q7: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q8: exactly 4 options — got 4
+- [PASS] Q8: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q8: explanation non-empty
+- [PASS] Q8: concept matches a confirmed checkpoint allocation
+- [PASS] Q8: page_number is a real page in the Note
+- [PASS] Q8: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q9: exactly 4 options — got 4
+- [PASS] Q9: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q9: explanation non-empty
+- [PASS] Q9: concept matches a confirmed checkpoint allocation
+- [PASS] Q9: page_number is a real page in the Note
+- [PASS] Q9: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q10: exactly 4 options — got 4
+- [PASS] Q10: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q10: explanation non-empty
+- [PASS] Q10: concept matches a confirmed checkpoint allocation
+- [PASS] Q10: page_number is a real page in the Note
+- [PASS] Q10: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q11: exactly 4 options — got 4
+- [PASS] Q11: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q11: explanation non-empty
+- [PASS] Q11: concept matches a confirmed checkpoint allocation
+- [PASS] Q11: page_number is a real page in the Note
+- [PASS] Q11: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q12: exactly 4 options — got 4
+- [PASS] Q12: Select-All (is_select_all=true) has 1-4 correct_answers — got 3
+- [PASS] Q12: explanation non-empty
+- [PASS] Q12: concept matches a confirmed checkpoint allocation
+- [PASS] Q12: page_number is a real page in the Note
+- [PASS] Q12: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q13: exactly 4 options — got 4
+- [PASS] Q13: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q13: explanation non-empty
+- [PASS] Q13: concept matches a confirmed checkpoint allocation
+- [PASS] Q13: page_number is a real page in the Note
+- [PASS] Q13: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q14: exactly 4 options — got 4
+- [PASS] Q14: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q14: explanation non-empty
+- [PASS] Q14: concept matches a confirmed checkpoint allocation
+- [PASS] Q14: page_number is a real page in the Note
+- [PASS] Q14: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q15: exactly 4 options — got 4
+- [PASS] Q15: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q15: explanation non-empty
+- [PASS] Q15: concept matches a confirmed checkpoint allocation
+- [PASS] Q15: page_number is a real page in the Note
+- [PASS] Q15: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q16: exactly 4 options — got 4
+- [PASS] Q16: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q16: explanation non-empty
+- [PASS] Q16: concept matches a confirmed checkpoint allocation
+- [PASS] Q16: page_number is a real page in the Note
+- [PASS] Q16: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q17: exactly 4 options — got 4
+- [PASS] Q17: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q17: explanation non-empty
+- [PASS] Q17: concept matches a confirmed checkpoint allocation
+- [PASS] Q17: page_number is a real page in the Note
+- [PASS] Q17: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q18: exactly 4 options — got 4
+- [PASS] Q18: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q18: explanation non-empty
+- [PASS] Q18: concept matches a confirmed checkpoint allocation
+- [PASS] Q18: page_number is a real page in the Note
+- [PASS] Q18: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q19: exactly 4 options — got 4
+- [PASS] Q19: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q19: explanation non-empty
+- [PASS] Q19: concept matches a confirmed checkpoint allocation
+- [PASS] Q19: page_number is a real page in the Note
+- [PASS] Q19: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q20: exactly 4 options — got 4
+- [PASS] Q20: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q20: explanation non-empty
+- [PASS] Q20: concept matches a confirmed checkpoint allocation
+- [PASS] Q20: page_number is a real page in the Note
+- [PASS] Q20: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q21: exactly 4 options — got 4
+- [PASS] Q21: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q21: explanation non-empty
+- [PASS] Q21: concept matches a confirmed checkpoint allocation
+- [PASS] Q21: page_number is a real page in the Note
+- [PASS] Q21: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q22: exactly 4 options — got 4
+- [PASS] Q22: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q22: explanation non-empty
+- [PASS] Q22: concept matches a confirmed checkpoint allocation
+- [PASS] Q22: page_number is a real page in the Note
+- [PASS] Q22: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q23: exactly 4 options — got 4
+- [PASS] Q23: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q23: explanation non-empty
+- [PASS] Q23: concept matches a confirmed checkpoint allocation
+- [PASS] Q23: page_number is a real page in the Note
+- [PASS] Q23: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q24: exactly 4 options — got 4
+- [PASS] Q24: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q24: explanation non-empty
+- [PASS] Q24: concept matches a confirmed checkpoint allocation
+- [PASS] Q24: page_number is a real page in the Note
+- [PASS] Q24: source_quote is a real (whitespace-normalized) substring of the Note
+
+---
