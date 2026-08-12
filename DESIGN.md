@@ -470,7 +470,7 @@ Python parses each block into a `VerifierIssue` (or a no-op for "keep") plus the
 
 ## Expected behavior
 
-Behavioral contracts for each agent's call — properties any valid output must have — plus one concrete worked example per agent, grounded in `water_cycle_note.txt`. Written for the `agent-testing` branch (isolated per-call testing before pipeline wiring); see `agent-test-log.md` for actual runs against these.
+Behavioral contracts for each agent's call — properties any valid output must have — plus one concrete worked example per agent, grounded in `water_cycle_note.txt`. Written for the `agent-testing` branch, for isolated per-call testing before pipeline wiring.
 
 ### Analyzer
 
@@ -512,7 +512,7 @@ Behavioral contracts for each agent's call — properties any valid output must 
 - A Question gets `action: "patch"` if any of: `source_quote` isn't a real, verbatim, on-`page_number` quote; the quote doesn't actually support `correct_answers`/`explanation`; distractors are implausible or near-duplicates of each other; `is_select_all` doesn't match what the grounding actually supports; phrasing admits more than one valid reading; or `concept` doesn't match the Question's actual topic.
 - A Question passing all of the above gets `action: "keep"`, even if a different, equally-valid Question could have been written instead — the Verifier judges the given Question as written, not whether it's the best possible Question for that Concept.
 
-**Worked example** — given Note text including `"The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers..." (Page 1)` and a Question claiming `source_quote: "NASA satellite data confirms 90 percent of atmospheric moisture originates from ocean evaporation."`, expect `action: "patch"` with a critique naming the fabricated quote — that sentence never appears in the Note (see `agent-test-log.md`'s `verifier-evaporation-mixed` case).
+**Worked example** — given Note text including `"The sun's heat provides the energy needed for evaporation, primarily from oceans, lakes, and rivers..." (Page 1)` and a Question claiming `source_quote: "NASA satellite data confirms 90 percent of atmospheric moisture originates from ocean evaporation."`, expect `action: "patch"` with a critique naming the fabricated quote — that sentence never appears in the Note.
 
 ## Data model
 
