@@ -6,7 +6,7 @@ The Generator agent produces Questions from Note snippets, one call per Concept 
 
 ## Architecture
 
-The Generator's work — one job per Concept for the initial pass, one job per flagged Concept for each patch round — is pushed onto a single shared queue. Two workers drain it, one bound to each model. Each worker processes exactly one job at a time, so a single model is never asked to do two things simultaneously, while the two workers run concurrently with each other. The pool is the sole mechanism governing Generator concurrency; the pipeline's `CONCURRENCY_CAP` semaphore is scoped to the Verifier and Analyzer's shared `gpt-oss-120b` calls and doesn't apply to Generator's calls.
+The Generator's work — one job per Concept for the initial pass, one job per flagged Concept for each patch round — is pushed onto a single shared queue. Two workers drain it, one bound to each model. Each worker processes exactly one job at a time, so a single model is never asked to do two things simultaneously, while the two workers run concurrently with each other. The pool's own two-worker structure is what governs Generator concurrency in practice. The pipeline's `CONCURRENCY_CAP` semaphore remains in place as shared infrastructure every agent call passes through, but since the pool never has more than two Generator calls in flight at once — one per worker — the cap is never the binding constraint for Generator; it continues to bind the Verifier and Analyzer's shared `gpt-oss-120b` calls as it does today. No special-case exclusion is needed.
 
 ## Components
 
