@@ -12,7 +12,7 @@ Turns a student's PDF notes into an AI-generated question set that can be review
 
 Docs this project runs on.
 
-- **Requirements** (`requirements.md`) — functional scope, v1 behavior contract. Exists.
+- **Requirements** (`requirements.md`) — functional scope, behavior contract. Exists.
 - **Design** (`DESIGN.md`) — pipeline architecture, agent responsibilities, data model. Exists.
 - **State** (`PROGRESS.md`) — done/current/todo log, source of truth for what's actually built vs. planned. Exists.
 - **Capacity map** — system limits (upload size cap, Groq rate limit, verify-loop 5-iteration cap, Room's 10-Player cap, etc.). Exists — see `DESIGN.md`'s Capacity map section.

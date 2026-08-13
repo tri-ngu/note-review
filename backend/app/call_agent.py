@@ -28,14 +28,11 @@ set_default_openai_client(_client)
 set_default_openai_api("chat_completions")
 set_tracing_disabled(True)
 
-# Groq's actual slug for this model is "openai/gpt-oss-120b" (vendor-prefixed) as of
-# this session's live /v1/models check — NOT "gpt-oss-120b" as DESIGN.md's Model
-# section currently states. The Agents SDK misparses the "/" as a litellm-style
-# provider prefix and silently strips it (confirmed live: sending plain MODEL string
-# produced a 404 for "gpt-oss-120b", not the "openai/..." slug actually requested) —
-# same failure mode DESIGN.md already documented for NIM's slugs, contradicting that
-# section's guess that Groq's slugs (assumed "/"-free) wouldn't need this wrap.
-# OpenAIChatCompletionsModel bypasses the SDK's string parsing entirely.
+# Groq's slug for this model is "openai/gpt-oss-120b" (vendor-prefixed). The Agents
+# SDK misparses the "/" as a litellm-style provider prefix and silently strips it,
+# sending a bare "gpt-oss-120b" that 404s — same failure mode as NIM's slugs (see
+# DESIGN.md's Provider section). OpenAIChatCompletionsModel bypasses the SDK's
+# string parsing entirely to avoid this.
 MODEL = "openai/gpt-oss-120b"
 _model = OpenAIChatCompletionsModel(model=MODEL, openai_client=_client)
 
