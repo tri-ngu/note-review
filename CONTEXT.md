@@ -6,13 +6,7 @@
 
 **Claude Code:** read and compile information, propose solutions after, implement per agreed design, find errors/inconsistencies, review and update this doc, clarify via /grilling whenever more info/context needed. Do not update any document without asking Tri for confirmation first, even after finishing a task. When debugging code or finding inconsistencies, propose fix and get Tri's confirmation before applying.
 
-Turns a student's PDF notes into an AI-generated question set that can be reviewed like flashcards, and played as a live multiplayer quiz game (Game Room — see note right below).
-
-## TEMPORARY — Game Room's Question Set source
-
-**Game Room (v2) is merged into `main` and live, but every Room is created from one hardcoded, hand-written `QuestionSet` fixture (`DIGESTIVE_SYSTEM_QUESTION_SET`) — not from a user's actual uploaded Note run through the real Analyzer/Generator/Verifier pipeline.** This was merged ahead of the original plan (Room was meant to ship only once v1.x was fully done, entered via a hub screen tied to a real generated `QuestionSet`) at Tri's explicit direction, so the already-built and manually-tested Game Room feature wouldn't sit unmerged.
-
-**`DESIGN.md` and `requirements.md` both describe Game Room as if this fixture-wiring were the final, permanent design — it is not.** Wherever those docs say a Room is created "from a Question Set," read that today as "from the one hardcoded fixture." Once v1 generation (the real pipeline) is finished, Room creation needs to be reconnected to take the session's actual generated `QuestionSet` instead.
+Turns a student's PDF notes into an AI-generated question set that can be reviewed like flashcards, and played as a live multiplayer quiz game (Game Room).
 
 ## Required Documents
 

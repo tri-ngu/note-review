@@ -3,10 +3,10 @@ import uuid
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from app.fixture import DIGESTIVE_SYSTEM_QUESTION_SET
 from app.game_logic import shuffle_questions
 from app.models import PlayerState
 from app.session import get_or_create_session_id
+from app.session_store import SessionStore
 from app.store import RoomNotFoundError, RoomStore
 
 rooms_router = APIRouter()
@@ -22,13 +22,21 @@ def _room_store(request: Request) -> RoomStore:
     return request.app.state.room_store
 
 
+def _session_store(request: Request) -> SessionStore:
+    return request.app.state.session_store
+
+
 @rooms_router.post("/rooms")
 async def create_room(request: Request, response: Response):
     session_id = get_or_create_session_id(request, response)
+    session_state = await _session_store(request).get(session_id)
+    if session_state.status != "ready" or session_state.question_set is None:
+        raise HTTPException(status_code=404, detail="no_question_set")
+
     store = _room_store(request)
     room = await store.create_room(
         host_session_id=session_id,
-        question_set=shuffle_questions(DIGESTIVE_SYSTEM_QUESTION_SET),
+        question_set=shuffle_questions(session_state.question_set),
     )
     return {"pin": room.pin}
 

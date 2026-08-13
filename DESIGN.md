@@ -579,7 +579,7 @@ Note text itself: a plain `str`, extracted from the PDF once at upload, held in 
 
 ### Room data model
 
-Extends the models above for the v2 Room mode — `RoomState.question_set` is a plain `QuestionSet` (see above), same model, same fixed shape, sourced from a fixed, hand-written `QuestionSet` (the Room fixture — see Room pipeline below), shuffled per-Room at creation.
+Extends the models above for the v2 Room mode — `RoomState.question_set` is a plain `QuestionSet` (see above), same model, same fixed shape, sourced from the calling session's real generated `QuestionSet` (see Room pipeline below), shuffled per-Room at creation.
 
 ```python
 class PlayerState(BaseModel):
@@ -592,8 +592,9 @@ class PlayerState(BaseModel):
 class RoomState(BaseModel):
     pin: str                   # 4-digit, zero-padded string (e.g. "0042"), not an int
     host_session_id: str       # matches the Host's existing v1 session cookie
-    question_set: QuestionSet  # per-Room shuffled copy of the fixture (Fisher-Yates,
-                                # see Room pipeline); source fixture itself never mutated
+    question_set: QuestionSet  # per-Room shuffled copy of the session's generated
+                                # QuestionSet (Fisher-Yates, see Room pipeline); the
+                                # session's own QuestionSet is never mutated
     status: Literal["lobby", "question_active", "answer_reveal", "leaderboard", "finished"]
     current_round: int = 0     # 0-indexed into question_set.questions
     question_start_time: float | None = None   # server clock, set on question_start broadcast
@@ -675,9 +676,10 @@ Lets the frontend rehydrate on page load without re-uploading — needed for `re
 - Response `200`: `{ status: "empty" | "checkpoint_pending" | "generating" | "ready" | "failed", allocations?: list[ConceptAllocation], questions?: list[Question] }` — `allocations` present for `checkpoint_pending`, `questions` present for `ready`.
 
 ### `POST /rooms`
-- Request: empty body — every Room is created from the one fixed `QuestionSet` fixture (see Room pipeline below).
+- Request: empty body — Room is created from the calling session's real generated `QuestionSet` (see Room pipeline below).
 - Auth: Host's existing session cookie
 - Response `200`: `{ pin: str }`
+- Errors `404 no_question_set`: session has no `ready` `QuestionSet` yet (nothing uploaded, or generation not finished/failed).
 - Sets `RoomState.host_session_id` from the session cookie
 
 ### `POST /rooms/{pin}/join`
@@ -764,22 +766,23 @@ From the flashcard display's browse view, at any time after generation, the user
 
 ## Room pipeline
 
-The Room mode's end-to-end flow, mirroring the style of the Generation pipeline diagram above — from Room creation through cleanup. Entered directly from a fixed, hand-written `QuestionSet` fixture — independent of the v1 upload/Analyzer/Generator/Verifier pipeline; Room mode doesn't depend on a generated Question Set to run.
+The Room mode's end-to-end flow, mirroring the style of the Generation pipeline diagram above — from Room creation through cleanup. Entered directly from the calling session's real generated `QuestionSet` — the same one the v1 flashcard browse/Review flow shows, sourced via the v1 upload/Analyzer/Generator/Verifier pipeline (see Generation pipeline above).
 
-The entry point is a "Create Room" button on the flashcard browse view (next to "Start Review"). The button sits alongside that view's own (separate) fixture content, but `POST /rooms` always creates the Room from the backend's own fixed `QuestionSet` fixture — the two are intentionally unrelated Question Sets; Room mode's content isn't tied to whatever Question Set the browse view happens to be showing.
+The entry point is a "Create Room" button on the flashcard browse view (next to "Start Review"), for the session's currently-generated `QuestionSet`. `POST /rooms` reads that same session's `QuestionSet` server-side (via `SessionStore`) rather than taking it in the request body — errors `404 no_question_set` if the session isn't `ready` yet.
 
 ```
-Host has a QuestionSet (this phase: one hardcoded fixture, not the real pipeline)
+Host has a QuestionSet (the session's real generated QuestionSet — see
+Generation pipeline above; Room creation requires status "ready")
    |
    v
 POST /rooms  (Host, authenticated via existing session cookie)
    - generates a unique 4-digit PIN (random, retried on collision against
      currently active Rooms)
-   - shuffles the fixture's Questions (Fisher-Yates, same approach as the
-     Review Session) into this Room's own question_set.questions order —
+   - shuffles the QuestionSet's Questions (Fisher-Yates, same approach as
+     the Review Session) into this Room's own question_set.questions order —
      per requirements.md's "Questions cycle in random order during the
-     game"; the source fixture itself is never mutated, so a fresh shuffle
-     is drawn per Room, not shared across Rooms
+     game"; the session's own QuestionSet is never mutated, so a fresh
+     shuffle is drawn per Room, not shared across Rooms
    - creates RoomState in the PIN-keyed in-memory store, status = LOBBY
    - Host's WS connects: /ws/room/{pin}  (role = host, matched via session
      cookie against RoomState.host_session_id)
@@ -793,7 +796,7 @@ LOBBY
    - Host starts whenever ready, no minimum Player count (per requirements.md)
    |
    v  (Host clicks "Start Game")
-QUESTION_ACTIVE  (round 1..N, N = fixture's QuestionSet length)
+QUESTION_ACTIVE  (round 1..N, N = the session's QuestionSet length)
    - join window closes — no further joins accepted (see Room join flow)
    - server broadcasts question_start to Host + every connected Player:
      full Question fields EXCEPT correct_answers/explanation (withheld
@@ -948,7 +951,7 @@ Server validates every client→server message against the sender's role (Player
 
 ## Room mode — deferred / out of scope
 
-- **Multiple selectable prewritten fixtures**: explicitly not building this — one fixture only, permanently within Room mode's scope.
+- **Multiple selectable Question Set sources per Room**: a Room always uses whichever `QuestionSet` the Host's session currently has `ready` — no picking among several saved sets or a library of prewritten content.
 - **External shared state store** (Redis/etc.): only revisit if single-instance in-memory state actually proves insufficient in practice.
 - **Partial credit for Select-All scoring**: explicitly decided against (all-or-nothing) — would need its own formula if ever revisited.
 - **Reload/resume mid-game**: a Host or Player reloading while the Room is still `lobby`/`question_active`/`answer_reveal`/`leaderboard` gets a fresh client with no resume — only an already-`finished`/evicted Room is detected and shown gracefully (see Room join flow's precheck pattern, now also used by Host). True mid-game resume is not built.

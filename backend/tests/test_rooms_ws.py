@@ -2,14 +2,14 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from fastapi.testclient import TestClient
-from app.main import create_app
 from app.fixture import DIGESTIVE_SYSTEM_QUESTION_SET
 import app.rooms_ws as rooms_ws
 import app.game_logic as game_logic
+from tests.conftest import room_test_client
 
 
 def _create_room_and_host_client():
-    client = TestClient(create_app())
+    client = room_test_client()
     pin = client.post("/rooms").json()["pin"]
     return client, pin
 
