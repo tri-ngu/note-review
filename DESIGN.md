@@ -275,6 +275,11 @@ Quality bar:
   phrasing/format/tested detail rather than repeating — never fabricate to
   hit the count
 - source_quote must be an exact substring of one of the provided snippets
+- source_quote must come from exactly ONE snippet — never join multiple
+  snippets together (e.g. with "and"), even if the answer draws on facts
+  from more than one. If a Question needs facts from multiple snippets,
+  ground it in whichever single snippet most directly supports the core
+  answer, or write it as two separate, simpler Questions instead
 
 Output format:
 - Separate each Question's block from the next with at least 2 newlines
@@ -369,6 +374,11 @@ Quality bar:
 - source_quote must be an exact substring of one of that flag's fix
   snippets — copying the pre-fix source_quote unchanged is only acceptable
   if it also appears verbatim among the fix snippets
+- source_quote must come from exactly ONE fix snippet — never join multiple
+  snippets together (e.g. with "and"), even if the answer draws on facts
+  from more than one. If a fix genuinely needs facts from multiple
+  snippets, ground it in whichever single snippet most directly supports
+  the core answer
 
 Output format:
 - Separate each Question's block from the next with at least 2 newlines
