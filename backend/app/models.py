@@ -3,6 +3,25 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class ConceptSnippet(BaseModel):
+    quote: str
+    page_number: int
+
+
+class ConceptAllocation(BaseModel):
+    concept: str
+    weight_percentage: float
+    question_count: int
+    snippets: list[ConceptSnippet]
+
+    @field_validator("snippets")
+    @classmethod
+    def at_least_one_snippet(cls, v: list[ConceptSnippet]) -> list[ConceptSnippet]:
+        if len(v) < 1:
+            raise ValueError("snippets must have at least 1 entry")
+        return v
+
+
 class Question(BaseModel):
     concept: str
     question_text: str
@@ -41,6 +60,24 @@ class Question(BaseModel):
 
 class QuestionSet(BaseModel):
     questions: list[Question]
+
+
+class VerifierIssue(BaseModel):
+    """One Question's verdict from a Verifier call. `action` is "keep" or
+    "patch"; `critique`/`snippets` are required (non-empty) only when
+    action == "patch", per DESIGN.md's Verifier output format."""
+
+    index: int
+    action: str
+    critique: str
+    snippets: list[ConceptSnippet]
+
+    @field_validator("action")
+    @classmethod
+    def valid_action(cls, v: str) -> str:
+        if v not in ("keep", "patch"):
+            raise ValueError(f'action must be "keep" or "patch", got {v!r}')
+        return v
 
 
 class PlayerState(BaseModel):
