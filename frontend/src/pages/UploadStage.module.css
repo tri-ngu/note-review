@@ -1,0 +1,92 @@
+.dropzone {
+  border: 2px dashed var(--sage);
+  background: #fff;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.dropzone:hover {
+  border-color: var(--forest);
+  background: #f7f6ec;
+}
+.dragover {
+  border-color: var(--forest);
+  background: #eef1e6;
+  border-style: solid;
+}
+.isError {
+  border-color: var(--gold);
+}
+.leaf {
+  font-size: 1.5rem;
+  color: var(--forest);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+.dzFace p {
+  margin: 0.25rem 0;
+}
+.browseBtn {
+  margin-top: 0.75rem;
+  background: none;
+  border: 1px solid var(--olive);
+  color: var(--olive);
+  padding: 0.5rem 1.1rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.browseBtn:hover {
+  background: var(--olive);
+  color: var(--cream);
+}
+.hidden {
+  display: none !important;
+}
+.spinner {
+  width: 26px;
+  height: 26px;
+  margin: 0 auto 0.8rem auto;
+  border: 3px solid var(--line);
+  border-top-color: var(--forest);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.dzError {
+  margin-top: 0.85rem;
+  border-left: 3px solid var(--gold);
+  background: #f8f0df;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+}
+.fieldRow {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.fieldRow label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--forest);
+}
+.qcountInput {
+  font-family: Constantia, Georgia, serif;
+  font-size: 1rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--olive);
+  background: #fff;
+  color: var(--olive);
+  width: 230px;
+  max-width: 100%;
+}
