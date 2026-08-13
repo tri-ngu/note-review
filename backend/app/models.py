@@ -80,6 +80,20 @@ class VerifierIssue(BaseModel):
         return v
 
 
+class SessionState(BaseModel):
+    """Per-session (cookie-keyed) v1 generation state, per DESIGN.md's
+    GET /session contract. `note_text` is retained across the whole session
+    lifetime — not just during generation — so /generate/retry can re-run
+    without re-upload, per requirements.md's Error handling."""
+
+    status: Literal["empty", "checkpoint_pending", "generating", "ready", "failed"] = "empty"
+    note_text: str | None = None
+    target_question_count: int | None = None
+    allocations: list[ConceptAllocation] | None = None
+    question_set: QuestionSet | None = None
+    error_message: str | None = None
+
+
 class PlayerState(BaseModel):
     player_id: str
     nickname: str

@@ -13,6 +13,7 @@ drift or repeated bad output retries the underlying call).
 import asyncio
 import math
 import re
+from typing import Callable
 
 from pydantic import ValidationError
 
@@ -205,7 +206,9 @@ async def _generate_initial_for_concept(
 
 
 async def run_generator_initial(
-    allocations: list[ConceptAllocation], step_log: list[str]
+    allocations: list[ConceptAllocation],
+    step_log: list[str],
+    on_event: Callable[[dict], None] | None = None,
 ) -> dict[str, dict[int, Question]]:
     # Index offsets computed upfront (concept order, cumulative question_count)
     # so global indices stay correct regardless of which concurrent call
@@ -217,11 +220,15 @@ async def run_generator_initial(
         offsets[alloc.concept] = next_index
         next_index += alloc.question_count
 
+    def on_result(concept: str, _result: dict[int, Question]) -> None:
+        if on_event is not None:
+            on_event({"stage": "generator_initial", "concept": concept})
+
     # Dual-model pool (see _run_generator_pool below) — its own two-worker
     # structure governs Generator concurrency, independent of the pipeline's
     # `concurrent` flag (which still governs Verifier dispatch in run_verify_loop).
     jobs = [_make_initial_job(a, offsets[a.concept], step_log) for a in allocations]
-    return await _run_generator_pool(jobs, step_log, "Generator-initial-pool")
+    return await _run_generator_pool(jobs, step_log, "Generator-initial-pool", on_result=on_result)
 
 
 # --- Verify loop --------------------------------------------------------------
@@ -261,7 +268,12 @@ def _extract_pages(note_text: str, page_numbers: set[int]) -> str:
 
 
 async def _verify_concept(
-    concept: str, indexed: dict[int, Question], note_text: str, round_num: int, step_log: list[str]
+    concept: str,
+    indexed: dict[int, Question],
+    note_text: str,
+    round_num: int,
+    step_log: list[str],
+    on_event: Callable[[dict], None] | None = None,
 ) -> tuple[str, list[VerifierIssue], bool]:
     relevant_pages = {q.page_number for q in indexed.values()}
     scoped_note = _extract_pages(note_text, relevant_pages)
@@ -283,6 +295,8 @@ async def _verify_concept(
                     issue.snippets = [s for s in issue.snippets if is_exact_substring(s.quote, note_text)]
 
     log(step_log, f"Verifier round {round_num} [{concept}]: satisfactory={satisfactory}, flagged={[i.index for i in issues if i.action == 'patch']}")
+    if on_event is not None:
+        on_event({"stage": "verify_round", "round": round_num, "concept": concept})
     return concept, issues, satisfactory
 
 
@@ -357,11 +371,14 @@ def _make_patch_job(
 
 
 async def _run_generator_pool(
-    jobs: list[generator_pool.Job], step_log: list[str], stage_label: str
+    jobs: list[generator_pool.Job],
+    step_log: list[str],
+    stage_label: str,
+    on_result: Callable[[str, dict[int, Question]], None] | None = None,
 ) -> dict[str, dict[int, Question]]:
     try:
         return await generator_pool.drain_pool(
-            jobs, call_agent.GENERATOR_MODEL_NAMES, lambda msg: log(step_log, msg), stage_label
+            jobs, call_agent.GENERATOR_MODEL_NAMES, lambda msg: log(step_log, msg), stage_label, on_result=on_result
         )
     except generator_pool.GeneratorPoolError as e:
         raise PipelineError(str(e)) from e
@@ -372,6 +389,7 @@ async def run_verify_loop(
     note_text: str,
     step_log: list[str],
     concurrent: bool = False,
+    on_event: Callable[[dict], None] | None = None,
 ) -> tuple[dict[str, dict[int, Question]], bool, int]:
     # Only concepts still in `pending` get a Verifier call this round — a concept
     # cleared (satisfactory) in an earlier round can't have changed since (nothing
@@ -382,7 +400,7 @@ async def run_verify_loop(
         round_issues: dict[str, list[VerifierIssue]] = {}
 
         verify_coros = [
-            _verify_concept(concept, concept_lists[concept], note_text, round_num, step_log)
+            _verify_concept(concept, concept_lists[concept], note_text, round_num, step_log, on_event)
             for concept in pending
         ]
         verify_results = await asyncio.gather(*verify_coros) if concurrent else [await c for c in verify_coros]
@@ -397,13 +415,19 @@ async def run_verify_loop(
 
         flagged_concepts = {c: f for c, f in round_issues.items() if f}
 
+        def patch_on_result(concept: str, _result: dict[int, Question]) -> None:
+            if on_event is not None:
+                on_event({"stage": "patch", "round": round_num, "concept": concept})
+
         # Dual-model pool (see _run_generator_pool above) — same as the
         # initial pass, independent of the `concurrent` flag.
         jobs = [
             _make_patch_job(concept, flagged, concept_lists, round_num, step_log)
             for concept, flagged in flagged_concepts.items()
         ]
-        patch_results = await _run_generator_pool(jobs, step_log, f"Generator-patch-pool-round{round_num}")
+        patch_results = await _run_generator_pool(
+            jobs, step_log, f"Generator-patch-pool-round{round_num}", on_result=patch_on_result
+        )
         for concept, patched in patch_results.items():
             concept_lists[concept].update(patched)
 

@@ -40,11 +40,18 @@ async def drain_pool(
     model_names: Sequence[str],
     log_fn: Callable[[str], None],
     stage_label: str,
+    on_result: Callable[[str, Any], None] | None = None,
 ) -> dict[str, Any]:
     """Runs exactly one worker per entry in `model_names`, all draining the
     same shared `jobs` list concurrently, until every job has either
     succeeded or failed on every model. Returns {job.key: result} for every
-    job that succeeded on some model."""
+    job that succeeded on some model.
+
+    `on_result`, when given, is called synchronously (job.key, result) the
+    moment each job succeeds — lets a caller stream per-job progress (e.g.
+    an SSE event per Concept) without waiting for every job in the pool to
+    finish first. Must not block/await; a queue.put_nowait-style call is
+    the intended use."""
     pending = list(jobs)
     lock = asyncio.Lock()
     cond = asyncio.Condition(lock)
@@ -93,6 +100,8 @@ async def drain_pool(
             async with cond:
                 in_flight -= 1
                 results[job.key] = result
+                if on_result is not None:
+                    on_result(job.key, result)
                 cond.notify_all()
 
     await asyncio.gather(*(worker(m) for m in model_names))

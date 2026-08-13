@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.generation_http import generation_router
 from app.rooms_http import rooms_router
 from app.rooms_ws import notify_and_close_evicted_room, rooms_websocket_endpoint
+from app.session_store import SessionStore
 from app.store import RoomStore
 
 
@@ -23,14 +25,16 @@ def create_app() -> FastAPI:
         yield
         cleanup_task.cancel()
 
-    app = FastAPI(title="Game Room Backend", lifespan=lifespan)
+    app = FastAPI(title="Note Review Backend", lifespan=lifespan)
     app.state.room_store = RoomStore()
+    app.state.session_store = SessionStore()
 
     @app.get("/health")
     def health_check():
         return {"status": "ok"}
 
     app.include_router(rooms_router)
+    app.include_router(generation_router)
     app.add_api_websocket_route("/ws/room/{pin}", rooms_websocket_endpoint)
 
     return app
