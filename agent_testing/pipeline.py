@@ -64,8 +64,11 @@ DEFAULT_QUESTIONS_PER_CONCEPT = 3
 ANALYZER_MAX_TOKENS = 6000  # no per-call count available upfront (concept count is the Analyzer's own output)
 GENERATOR_BASE_TOKENS = 1500
 GENERATOR_PER_QUESTION_TOKENS = 700
-VERIFIER_BASE_TOKENS = 1000
-VERIFIER_PER_QUESTION_TOKENS = 400
+VERIFIER_BASE_TOKENS = 1500
+VERIFIER_PER_QUESTION_TOKENS = 600  # bumped 2026-08-13 (from 1000/400) — the two new
+# quality-bar criteria (distractor cross-check, cross-question duplicate check) make
+# critique text longer; a 3-question call truncated mid-critique at the old 2200-token
+# cap on a live french_revolution_note.txt run right after those criteria were added
 
 NOTE_PATH = Path(__file__).parent / "water_cycle_note.txt"
 LOG_PATH = Path(__file__).parent / "pipeline-run-log.md"

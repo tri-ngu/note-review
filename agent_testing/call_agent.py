@@ -49,6 +49,11 @@ class CallLogEntry:
     input_tokens: int = 0
     output_tokens: int = 0
     total_tokens: int = 0
+    cached_tokens: int = 0  # Groq prompt-caching hit count, from
+    # usage.prompt_tokens_details.cached_tokens — only meaningful on
+    # gpt-oss-120b/gpt-oss-20b calls (see DESIGN.md's Concurrent generation:
+    # Dual-model Generator pool); 0 on llama-3.3-70b-versatile, which doesn't
+    # support caching at all, and may be 0 elsewhere on a cold/expired cache
 
 
 CALL_LOG: list[CallLogEntry] = []
@@ -116,15 +121,10 @@ snippets: ["Long bones act as levers to help you move, e.g. the femur." : 1]
 
 GENERATOR_INITIAL_INSTRUCTIONS = """\
 You are writing exam-style questions for one Concept from a student's study
-Note, using ONLY the snippets provided below — you have not seen and must
-not assume anything about the rest of the Note.
+Note, using ONLY the snippets provided at the end of this prompt — you have
+not seen and must not assume anything about the rest of the Note.
 
-Concept: {concept}
-Snippets:
-{snippets}
-
-Write exactly {question_count} Questions covering this Concept. For each,
-output a block with these fields:
+For each Question, output a block with these fields:
 - question_text: a clear, self-contained question, as a quoted string
 - options: exactly 4 answer choices, as a quoted-string list, e.g.
   ["Option A", "Option B", "Option C", "Option D"]
@@ -146,6 +146,10 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- A distractor must not be something the given snippets themselves state as
+  true — if a wrong option is also asserted true elsewhere in the snippets
+  and could defensibly answer the question, that's an ambiguous second
+  correct answer, not a clean distractor
 - Don't bundle multiple distinct facts into a single option
 - If question_count exceeds what the snippets can support distinctly, vary
   phrasing/format/tested detail rather than repeating — never fabricate to
@@ -178,22 +182,22 @@ explanation: "Rain, snow, and hail are precipitation forms; evaporation is a dif
 page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
+
+Concept: {concept}
+Snippets:
+{snippets}
+
+Write exactly {question_count} Questions covering the Concept above, using
+ONLY the given Snippets, following the fields/quality bar/output format
+specified above.
 """
 
 GENERATOR_PATCH_INSTRUCTIONS = """\
 You are a tutor helping a student improve their review questions to study for an exam. Their
 question list has been reviewed prior and the ones not up to quality have been marked for you
-to fix. Fix ONLY the flagged Questions below, using ONLY the new snippets provided
-for the fix. Follow the critique to reevaluate the question and apply an appropriate fix.
-
-Concept: {concept}
-Flagged Questions (with the Verifier's critique and fix snippets):
-{flagged_questions}
-
-Each flagged Question's existing source_quote is shown above for context
-only — it is what the flag is critiquing, not a valid source for your
-replacement. Do not reuse it in your output unless it also happens to
-appear verbatim among that flag's fix snippets.
+to fix. Fix ONLY the flagged Questions provided at the end of this prompt, using ONLY the new
+snippets provided for each fix. Follow the critique to reevaluate the question and apply an
+appropriate fix.
 
 For each flagged index, output a full replacement Question block — all
 fields, not just the changed ones — prefixed with the index it replaces:
@@ -214,7 +218,12 @@ fields, not just the changed ones — prefixed with the index it replaces:
 - page_number: the page number (int) the grounding snippet came from
 - source_quote: the exact snippet text (or relevant portion), as a quoted
   string, copied verbatim from that flag's fix snippets — NOT from the
-  Question's pre-fix source_quote shown above for context
+  Question's pre-fix source_quote given alongside each flagged Question below
+
+Each flagged Question's existing source_quote, given for context below, is
+what the flag is critiquing, not a valid source for your replacement. Do not
+reuse it in your output unless it also happens to appear verbatim among that
+flag's fix snippets.
 
 Do not touch Questions that weren't flagged — they are not in your input
 and must not appear in your output.
@@ -226,6 +235,10 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- A distractor must not be something the fix snippets themselves state as
+  true — if a wrong option is also asserted true elsewhere in the fix
+  snippets and could defensibly answer the question, that's an ambiguous
+  second correct answer, not a clean distractor
 - Don't bundle multiple distinct facts into a single option
 - source_quote must be an exact substring of one of that flag's fix
   snippets — copying the pre-fix source_quote unchanged is only acceptable
@@ -260,19 +273,20 @@ explanation: "Rain, snow, and hail are precipitation forms; evaporation is a dif
 page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
+
+Concept: {concept}
+Flagged Questions (with the Verifier's critique and fix snippets):
+{flagged_questions}
+
+Fix the flagged Questions above per the instructions and quality bar given.
 """
 
 VERIFIER_INSTRUCTIONS = """\
 You are fact-checking and quality-checking Questions made by a student to review for an exam
-against their Note's FULL text below. Ensure that the questions and their answers match the note,
-and are comprehensive enough to be of quality for a review. You are only checking questions for
-the particular concept provided, and provide critique. DO NOT CHANGE any of the question contents.
-
-Note text:
-{note_text}
-
-Questions to check (all belong to Concept: {concept}):
-{questions}
+against the Note text provided at the end of this prompt. Ensure that the questions and their
+answers match the note, and are comprehensive enough to be of quality for a review. You are only
+checking questions for the particular concept provided, and provide critique. DO NOT CHANGE any of
+the question contents.
 
 For EACH Question, output one block with these fields:
 - index: the Question's global index (int), copied from its input — every
@@ -289,6 +303,10 @@ For EACH Question, output one block with these fields:
 Quality bar, checked against the Note (verbatim from Verify loop detail):
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
+- No distractor is itself asserted true elsewhere in the Note text in a way
+  that could defensibly also answer the question — a "wrong" option the Note
+  itself confirms is also true is an ambiguous second correct answer, not a
+  valid distractor, and should be patched
 - is_select_all matches the intended semantics (deliberate choice, not
   count-inferred). A Select-All Question (is_select_all: true) legitimately
   has anywhere from 1 to all 4 options correct — a single correct answer
@@ -303,6 +321,12 @@ Quality bar, checked against the Note (verbatim from Verify loop detail):
 - source_quote is a real quote genuinely present on page_number and matches verbatim, and it
   actually supports correct_answers/explanation — not fabricated, vague, or
   contradicting page_number
+- Question isn't a near-duplicate of another Question in this same call's
+  list — if two Questions test the same underlying fact/answer off the same
+  grounding with no meaningfully different angle (reworded phrasing alone
+  doesn't count as different), patch the weaker/later one, and use the
+  critique to name what distinct angle or detail the replacement should
+  cover instead
 
 Output format:
 - Separate each Question's block from the next with at least 2 newlines
@@ -325,6 +349,14 @@ snippets: []
 
 satisfactory: false
 --END--
+
+Note text:
+{note_text}
+
+Questions to check (all belong to Concept: {concept}):
+{questions}
+
+Evaluate each Question above against the Note text and quality bar given.
 """
 
 # Analyzer's instructions have no per-call placeholders — Note text is
@@ -427,6 +459,7 @@ async def call_agent_async(
         input_tokens=usage.input_tokens if usage else 0,
         output_tokens=usage.output_tokens if usage else 0,
         total_tokens=usage.total_tokens if usage else 0,
+        cached_tokens=(usage.input_tokens_details.cached_tokens if usage and usage.input_tokens_details else 0),
     )
     CALL_LOG.append(entry)
     if CALL_LOG_HOOK is not None:

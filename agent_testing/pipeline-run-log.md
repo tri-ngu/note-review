@@ -2219,3 +2219,503 @@ options
 - [PASS] Q24: source_quote is a real (whitespace-normalized) substring of the Note
 
 ---
+
+## Pipeline run 2026-08-12T22:09:22 (sequential)
+
+- **Mode**: sequential
+- **Total time**: 271.2s
+- **Total Questions**: 27
+- **Verify loop**: satisfactory=True after 1 round(s)
+- **Total agent calls this run**: 20
+- **Rate-limit (429) hits**: 1
+- **Total tokens**: 46478 (25204 input, 21274 output)
+
+### Per-call breakdown
+
+| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |
+|---|---|---|---|---|---|
+| 1 | analyzer-live-attempt1 | 8.4 | 1550 | 2829 | 4379 |
+| 2 | analyzer-live-attempt2 | 66.3 | 1550 | 4013 | 5563 |
+| 3 | generator-initial-live-Financial and social causes-llama-3.3-70b-versatile-attempt1 | 1.9 | 973 | 700 | 1673 |
+| 4 | generator-initial-live-Storming of the Bastille-llama-3.3-70b-versatile-attempt1 | 1.2 | 841 | 390 | 1231 |
+| 5 | generator-initial-live-Estates-General and National Assembly formation-openai/gpt-oss-20b-attempt1 | 3.3 | 987 | 2288 | 3275 |
+| 6 | generator-initial-live-Declaration of the Rights of Man and of the Citizen-llama-3.3-70b-versatile-attempt1 | 18.5 | 815 | 406 | 1221 |
+| 7 | generator-initial-live-Establishment of the Republic and execution of Louis XVI-openai/gpt-oss-20b-attempt1 | 19.0 | 849 | 1066 | 1915 |
+| 8 | generator-initial-live-Reign of Terror and Thermidorian Reaction-llama-3.3-70b-versatile-attempt1 | 1.6 | 881 | 676 | 1557 |
+| 9 | generator-initial-live-Napoleon's coup and the Consulate-llama-3.3-70b-versatile-attempt1 | 9.3 | 854 | 324 | 1178 |
+| 10 | generator-initial-live-The Directory (1795-1799)-openai/gpt-oss-20b-attempt1 | 31.4 | 879 | 1403 | 2282 |
+| 11 | generator-initial-live-Long-term effects and Napoleonic Code-llama-3.3-70b-versatile-attempt1 | 23.5 | 881 | 448 | 1329 |
+| 12 | verifier-live-round1-The Directory (1795-1799) | 1.6 | 1308 | 520 | 1828 |
+| 13 | verifier-live-round1-Napoleon's coup and the Consulate | 2.1 | 1356 | 619 | 1975 |
+| 14 | verifier-live-round1-Establishment of the Republic and execution of Louis XVI | 21.9 | 1370 | 572 | 1942 |
+| 15 | verifier-live-round1-Declaration of the Rights of Man and of the Citizen | 7.2 | 1554 | 543 | 2097 |
+| 16 | verifier-live-round1-Estates-General and National Assembly formation | 30.3 | 1899 | 653 | 2552 |
+| 17 | verifier-live-round1-Storming of the Bastille | 16.7 | 1531 | 840 | 2371 |
+| 18 | verifier-live-round1-Financial and social causes | 26.0 | 1807 | 1277 | 3084 |
+| 19 | verifier-live-round1-Reign of Terror and Thermidorian Reaction | 20.7 | 1826 | 788 | 2614 |
+| 20 | verifier-live-round1-Long-term effects and Napoleonic Code | 13.8 | 1493 | 919 | 2412 |
+
+### Checkpoint allocation
+
+| Concept | Weight % | Question count |
+|---|---|---|
+| Financial and social causes | 18.00 | 5 |
+| Estates-General and National Assembly formation | 12.00 | 3 |
+| Storming of the Bastille | 10.00 | 3 |
+| Declaration of the Rights of Man and of the Citizen | 10.00 | 3 |
+| Establishment of the Republic and execution of Louis XVI | 8.00 | 2 |
+| Reign of Terror and Thermidorian Reaction | 13.00 | 4 |
+| The Directory (1795-1799) | 9.00 | 2 |
+| Napoleon's coup and the Consulate | 8.00 | 2 |
+| Long-term effects and Napoleonic Code | 12.00 | 3 |
+
+### Step log
+```
+[2026-08-12T22:09:22] === Pipeline run start (concurrent=False) ===
+[2026-08-12T22:09:30] Analyzer attempt 1: fabricated snippet 'In 1792, France was declared a republic, and in January 1793', retrying
+[2026-08-12T22:10:37] Analyzer attempt 2: OK, 9 concepts
+[2026-08-12T22:10:37] Target total question_count: 27 (default = 3 x 9 concepts)
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Financial and social causes' weight=18.00 count=5
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Estates-General and National Assembly formation' weight=12.00 count=3
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Storming of the Bastille' weight=10.00 count=3
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Declaration of the Rights of Man and of the Citizen' weight=10.00 count=3
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Establishment of the Republic and execution of Louis XVI' weight=8.00 count=2
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Reign of Terror and Thermidorian Reaction' weight=13.00 count=4
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'The Directory (1795-1799)' weight=9.00 count=2
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): "Napoleon's coup and the Consulate" weight=8.00 count=2
+[2026-08-12T22:10:37] Checkpoint (auto-confirmed): 'Long-term effects and Napoleonic Code' weight=12.00 count=3
+[2026-08-12T22:10:39] Generator-initial [Financial and social causes] (llama-3.3-70b-versatile): 5 Questions, indices [1, 2, 3, 4, 5]
+[2026-08-12T22:10:40] Generator-initial [Storming of the Bastille] (llama-3.3-70b-versatile): 3 Questions, indices [9, 10, 11]
+[2026-08-12T22:10:40] Generator-initial [Estates-General and National Assembly formation] (openai/gpt-oss-20b): 3 Questions, indices [6, 7, 8]
+[2026-08-12T22:10:58] Generator-initial [Declaration of the Rights of Man and of the Citizen] (llama-3.3-70b-versatile): 3 Questions, indices [12, 13, 14]
+[2026-08-12T22:10:59] Generator-initial [Establishment of the Republic and execution of Louis XVI] (openai/gpt-oss-20b): 2 Questions, indices [15, 16]
+[2026-08-12T22:11:00] Generator-initial [Reign of Terror and Thermidorian Reaction] (llama-3.3-70b-versatile): 4 Questions, indices [17, 18, 19, 20]
+[2026-08-12T22:11:09] Generator-initial [Napoleon's coup and the Consulate] (llama-3.3-70b-versatile): 2 Questions, indices [23, 24]
+[2026-08-12T22:11:31] Generator-initial [The Directory (1795-1799)] (openai/gpt-oss-20b): 2 Questions, indices [21, 22]
+[2026-08-12T22:11:33] Generator-initial [Long-term effects and Napoleonic Code] (llama-3.3-70b-versatile): 3 Questions, indices [25, 26, 27]
+[2026-08-12T22:11:34] Verifier round 1 [The Directory (1795-1799)]: satisfactory=True, flagged=[]
+[2026-08-12T22:11:37] Verifier round 1 [Napoleon's coup and the Consulate]: satisfactory=True, flagged=[]
+[2026-08-12T22:11:59] Verifier round 1 [Establishment of the Republic and execution of Louis XVI]: satisfactory=True, flagged=[]
+[2026-08-12T22:12:06] Verifier round 1 [Declaration of the Rights of Man and of the Citizen]: satisfactory=True, flagged=[]
+[2026-08-12T22:12:36] Verifier round 1 [Estates-General and National Assembly formation]: satisfactory=True, flagged=[]
+[2026-08-12T22:12:53] Verifier round 1 [Storming of the Bastille]: satisfactory=True, flagged=[]
+[2026-08-12T22:13:19] Verifier round 1 [Financial and social causes]: satisfactory=True, flagged=[]
+[2026-08-12T22:13:39] Verifier round 1 [Reign of Terror and Thermidorian Reaction]: satisfactory=True, flagged=[]
+[2026-08-12T22:13:53] Verifier round 1 [Long-term effects and Napoleonic Code]: satisfactory=True, flagged=[]
+[2026-08-12T22:13:53] Verify loop: satisfactory after round 1, exiting early
+[2026-08-12T22:13:53] === Pipeline run end: 27 Questions, satisfactory=True after 1 round(s), 271.2s total, 1 rate-limit hits ===
+```
+
+### Final QuestionSet
+
+**1.** [Financial and social causes] What was a major contributor to France's financial crisis in the late 1780s?
+- options: ['Decades of costly wars', 'A progressive tax system', 'Poor harvests', 'A decline in international trade'], correct: [1], select_all: False
+- explanation: Decades of costly wars, including support for the American Revolution, had left the royal treasury nearly bankrupt.
+- page 1, source_quote: 'Decades of costly wars, including support for the American Revolution, had left the royal treasury nearly bankrupt.'
+
+**2.** [Financial and social causes] What proportion of the population made up the Third Estate in France?
+- options: ['About 50 percent', 'About 70 percent', 'About 90 percent', 'About 97 percent'], correct: [4], select_all: False
+- explanation: The Third Estate — commoners, who made up about 97 percent of the population — bore most of the financial burden.
+- page 1, source_quote: 'a regressive tax system placed most of the financial burden on the Third Estate — commoners, who made up about 97 percent of the population'
+
+**3.** [Financial and social causes] Which groups were largely exempt from taxation in France?
+- options: ['The Third Estate', 'The First Estate and Second Estate', 'The urban poor', 'The clergy and international traders'], correct: [2], select_all: False
+- explanation: The First Estate (clergy) and Second Estate (nobility) were largely exempt from taxation despite owning a large share of the land.
+- page 1, source_quote: 'a regressive tax system placed most of the financial burden on the Third Estate — commoners, who made up about 97 percent of the population — while the First Estate (clergy) and Second Estate (nobility) were largely exempt from taxation despite owning a large share of the land'
+
+**4.** [Financial and social causes] What was the impact of poor harvests in 1788 on the French population?
+- options: ['It led to a surplus of bread', 'It drove down the price of bread', 'It caused widespread hunger among the urban poor', 'It had no impact on the population'], correct: [3], select_all: False
+- explanation: Poor harvests in 1788 worsened the crisis, driving up the price of bread and causing widespread hunger among the urban poor.
+- page 1, source_quote: 'Poor harvests in 1788 worsened the crisis, driving up the price of bread and causing widespread hunger among the urban poor'
+
+**5.** [Financial and social causes] What ideas were spread through pamphlets and salons in France, influencing the population's view of government?
+- options: ['The divine right of kings', 'Enlightenment ideas', 'Feudalism', 'Socialism'], correct: [2], select_all: False
+- explanation: Enlightenment ideas, spread through pamphlets and salons, had also given many French citizens a new political vocabulary — questioning the divine right of kings and arguing for individual rights and representative government.
+- page 1, source_quote: 'Enlightenment ideas, spread through pamphlets and salons, had also given many French citizens a new political vocabulary — questioning the divine right of kings and arguing for individual rights and representative government'
+
+**6.** [Estates-General and National Assembly formation] Why did Louis XVI convene the Estates-General in May 1789?
+- options: ["To address France's bankruptcy", 'To reform tax laws', 'To suppress uprisings', 'To create a new constitution'], correct: [1], select_all: False
+- explanation: The snippet states that Louis XVI convened the Estates-General because France was facing bankruptcy.
+- page 1, source_quote: 'Facing bankruptcy, Louis XVI convened the Estates-General in May 1789, an assembly of representatives from all three Estates, for the first time since 1614.'
+
+**7.** [Estates-General and National Assembly formation] What caused the Estates-General meeting to break down?
+- options: ['A lack of attendance', 'Disputes over voting procedure', 'Violent riots', 'Royal interference'], correct: [2], select_all: False
+- explanation: The snippet explains that disputes over voting procedure—each Estate voting as a single bloc—quickly caused the meeting to break down.
+- page 1, source_quote: 'Disputes over voting procedure — each Estate traditionally voted as a single bloc, giving the privileged First and Second Estates a built-in majority over the far more numerous Third Estate — quickly caused the meeting to break down.'
+
+**8.** [Estates-General and National Assembly formation] What action did representatives of the Third Estate take on June 17, 1789?
+- options: ['They declared themselves the National Assembly to represent all French people', 'They marched to Versailles demanding bread', 'They convened a council with the First Estate', 'They dissolved the Estates-General'], correct: [1], select_all: False
+- explanation: The snippet reports that on June 17, 1789, representatives of the Third Estate declared themselves the National Assembly, claiming to represent the French people as a whole.
+- page 2, source_quote: 'On June 17, 1789, representatives of the Third Estate, joined by some sympathetic clergy, declared themselves the National Assembly, claiming to represent the French people as a whole rather than their separate Estate.'
+
+**9.** [Storming of the Bastille] What did the crowd of Parisians storm on July 14, 1789, seeking?
+- options: ['The Palace of Versailles', 'The Bastille', 'The Eiffel Tower', 'The Louvre'], correct: [2], select_all: False
+- explanation: The crowd stormed the Bastille, a fortress and prison that symbolized royal authority, seeking weapons and gunpowder.
+- page 2, source_quote: 'On July 14, 1789, a crowd of Parisians stormed the Bastille, a fortress and prison that symbolized royal authority, seeking weapons and gunpowder.'
+
+**10.** [Storming of the Bastille] What is the fall of the Bastille now commemorated as?
+- options: ["France's national holiday", 'The start of World War I', 'The end of the French Revolution', 'The coronation of Napoleon'], correct: [1], select_all: False
+- explanation: The fall of the Bastille is now commemorated as France's national holiday and is widely treated as the symbolic start of the Revolution.
+- page 2, source_quote: "The fall of the Bastille is now commemorated as France's national holiday and is widely treated as the symbolic start of the Revolution."
+
+**11.** [Storming of the Bastille] What does the Bastille symbolize according to the given information?
+- options: ['The power of the people', 'Royal authority', 'The French economy', 'The military strength of France'], correct: [2], select_all: False
+- explanation: The Bastille is a fortress and prison that symbolized royal authority.
+- page 2, source_quote: 'On July 14, 1789, a crowd of Parisians stormed the Bastille, a fortress and prison that symbolized royal authority, seeking weapons and gunpowder.'
+
+**12.** [Declaration of the Rights of Man and of the Citizen] What month and year did the National Assembly adopt the Declaration of the Rights of Man and of the Citizen?
+- options: ['July 1788', 'August 1789', 'September 1790', 'October 1791'], correct: [2], select_all: False
+- explanation: The National Assembly adopted the Declaration in August 1789, as stated in the snippet.
+- page 2, source_quote: 'In August 1789, the National Assembly abolished feudal privileges and adopted the Declaration of the Rights of Man and of the Citizen, asserting that all men are born free and equal in rights.'
+
+**13.** [Declaration of the Rights of Man and of the Citizen] What did the National Assembly abolish along with adopting the Declaration of the Rights of Man and of the Citizen?
+- options: ['Monarchy', 'Feudal privileges', 'Socialism', 'Capitalism'], correct: [2], select_all: False
+- explanation: The National Assembly abolished feudal privileges, according to the snippet.
+- page 2, source_quote: 'In August 1789, the National Assembly abolished feudal privileges and adopted the Declaration of the Rights of Man and of the Citizen, asserting that all men are born free and equal in rights.'
+
+**14.** [Declaration of the Rights of Man and of the Citizen] What does the Declaration of the Rights of Man and of the Citizen assert about men?
+- options: ['They are born with different rights based on social class', 'They are born free and equal in rights', 'They have no inherent rights', 'They must earn their rights'], correct: [2], select_all: False
+- explanation: The Declaration asserts that all men are born free and equal in rights, as stated in the snippet.
+- page 2, source_quote: 'In August 1789, the National Assembly abolished feudal privileges and adopted the Declaration of the Rights of Man and of the Citizen, asserting that all men are born free and equal in rights.'
+
+**15.** [Establishment of the Republic and execution of Louis XVI] In what year was France declared a republic?
+- options: ['1791', '1792', '1793', '1794'], correct: [2], select_all: False
+- explanation: The snippet states that France was declared a republic in 1792.
+- page 2, source_quote: 'in 1792, France was declared a republic, and in January 1793, Louis XVI was executed by guillotine after being convicted of treason.'
+
+**16.** [Establishment of the Republic and execution of Louis XVI] Who was executed by guillotine after being convicted of treason?
+- options: ['Louis XVI', 'Marie Antoinette', 'Napoleon Bonaparte', 'Jean-Paul Marat'], correct: [1], select_all: False
+- explanation: The snippet identifies Louis XVI as the one executed by guillotine after conviction.
+- page 2, source_quote: 'in 1792, France was declared a republic, and in January 1793, Louis XVI was executed by guillotine after being convicted of treason.'
+
+**17.** [Reign of Terror and Thermidorian Reaction] What was the estimated number of people executed by guillotine during the Reign of Terror?
+- options: ['10,000 to 11,000', '16,000 to 17,000', '20,000 to 21,000', '25,000 to 26,000'], correct: [2], select_all: False
+- explanation: The period from September 1793 to July 1794, known as the Reign of Terror, saw the revolutionary government execute an estimated 16,000 to 17,000 people by guillotine on charges of counter-revolutionary activity.
+- page 2, source_quote: 'The period from September 1793 to July 1794, known as the Reign of Terror, saw the revolutionary government, led in large part by Maximilien Robespierre and the Committee of Public Safety, execute an estimated 16,000 to 17,000 people by guillotine on charges of counter-revolutionary activity.'
+
+**18.** [Reign of Terror and Thermidorian Reaction] Who led the revolutionary government during the Reign of Terror?
+- options: ['Maximilien Robespierre', 'Napoleon Bonaparte', 'Louis XVI', 'George Washington'], correct: [1], select_all: False
+- explanation: The period from September 1793 to July 1794, known as the Reign of Terror, saw the revolutionary government, led in large part by Maximilien Robespierre and the Committee of Public Safety.
+- page 2, source_quote: 'The period from September 1793 to July 1794, known as the Reign of Terror, saw the revolutionary government, led in large part by Maximilien Robespierre and the Committee of Public Safety, execute an estimated 16,000 to 17,000 people by guillotine on charges of counter-revolutionary activity.'
+
+**19.** [Reign of Terror and Thermidorian Reaction] What event marked the end of the Reign of Terror?
+- options: ['The execution of Louis XVI', 'The rise of Napoleon Bonaparte', 'The arrest and execution of Robespierre', 'The French Revolution'], correct: [3], select_all: False
+- explanation: The Terror ended abruptly when Robespierre himself was arrested and executed on July 28, 1794, an event known as the Thermidorian Reaction.
+- page 2, source_quote: 'The Terror ended abruptly when Robespierre himself was arrested and executed on July 28, 1794, an event known as the Thermidorian Reaction.'
+
+**20.** [Reign of Terror and Thermidorian Reaction] What is the name of the event that occurred when Robespierre was arrested and executed?
+- options: ['The French Revolution', 'The Reign of Terror', 'The Thermidorian Reaction', 'The Committee of Public Safety'], correct: [3], select_all: False
+- explanation: The Terror ended abruptly when Robespierre himself was arrested and executed on July 28, 1794, an event known as the Thermidorian Reaction.
+- page 2, source_quote: 'The Terror ended abruptly when Robespierre himself was arrested and executed on July 28, 1794, an event known as the Thermidorian Reaction.'
+
+**21.** [The Directory (1795-1799)] After the fall of Robespierre, which government governed France from 1795 to 1799?
+- options: ['The Directory', 'The monarchy', 'The First French Empire', 'The Bourbon Restoration'], correct: [1], select_all: False
+- explanation: The snippet states that a more moderate government called the Directory governed France from 1795 to 1799.
+- page 3, source_quote: 'After the fall of Robespierre, a more moderate government called the Directory governed France from 1795 to 1799.'
+
+**22.** [The Directory (1795-1799)] Select all challenges that the Directory faced according to the provided snippet.
+- options: ['Economic troubles at home', 'Ongoing wars against a coalition of European monarchies', 'Peaceful relations with Europe', 'A strong, stable political system'], correct: [1, 2], select_all: True
+- explanation: The snippet describes the Directory as struggling to manage both economic troubles at home and ongoing wars against a coalition of European monarchies.
+- page 3, source_quote: 'The Directory was widely seen as corrupt and politically unstable, struggling to manage both economic troubles at home and ongoing wars against a coalition of European monarchies opposed to revolutionary France.'
+
+**23.** [Napoleon's coup and the Consulate] On what date did Napoleon stage a coup d'état that overthrew the Directory and established the Consulate?
+- options: ['November 8, 1799', 'November 9, 1799', 'November 10, 1799', 'November 11, 1799'], correct: [2], select_all: False
+- explanation: Napoleon staged a coup d'état on November 9, 1799, which is also known as 18 Brumaire on the revolutionary calendar.
+- page 3, source_quote: "On November 9, 1799 — 18 Brumaire on the revolutionary calendar — Napoleon staged a coup d'état that overthrew the Directory and established the Consulate, with himself as First Consul."
+
+**24.** [Napoleon's coup and the Consulate] What event is often marked by historians as the end of the French Revolution?
+- options: ['The execution of King Louis XVI', 'The rise of the Directory', "Napoleon's coup d'état", 'The coronation of Napoleon as Emperor of France'], correct: [3], select_all: False
+- explanation: Most historians mark Napoleon's coup d'état as the end of the French Revolution, even though Napoleon would go on to crown himself Emperor of France in 1804.
+- page 3, source_quote: 'Most historians mark this coup as the end of the French Revolution, even though Napoleon would go on to crown himself Emperor of France in 1804.'
+
+**25.** [Long-term effects and Napoleonic Code] What were some of the long-term effects of the Revolution?
+- options: ["It only affected France's internal politics", 'It dismantled the legal foundations of feudalism and hereditary privilege in France', 'It had no impact on European and Latin American movements', 'It led to the restoration of the monarchy'], correct: [2], select_all: False
+- explanation: The Revolution dismantled the legal foundations of feudalism and hereditary privilege in France, established the principle that political legitimacy comes from the people rather than divine right, and inspired revolutionary and nationalist movements throughout nineteenth-century Europe and Latin America.
+- page 3, source_quote: 'It dismantled the legal foundations of feudalism and hereditary privilege in France, established the principle that political legitimacy comes from the people rather than divine right, and inspired revolutionary and nationalist movements throughout nineteenth-century Europe and Latin America.'
+
+**26.** [Long-term effects and Napoleonic Code] What was the significance of the Napoleonic Code?
+- options: ['It restored the feudal system in France', 'It codified many revolutionary principles and influenced civil law systems worldwide', 'It limited the power of the monarch', 'It had no impact on European law'], correct: [2], select_all: False
+- explanation: The Napoleonic Code codified many revolutionary principles — including equality before the law and secular authority — and influenced civil law systems in dozens of countries worldwide.
+- page 3, source_quote: 'The Napoleonic Code, issued in 1804, codified many revolutionary principles — including equality before the law and secular authority — and influenced civil law systems in dozens of countries worldwide.'
+
+**27.** [Long-term effects and Napoleonic Code] What was one of the key principles established by the Revolution?
+- options: ['Divine right of kings', 'Hereditary privilege', 'Political legitimacy comes from the people', 'Feudalism'], correct: [3], select_all: False
+- explanation: The Revolution established the principle that political legitimacy comes from the people rather than divine right.
+- page 3, source_quote: 'established the principle that political legitimacy comes from the people rather than divine right'
+
+### Quality check
+
+**Quality check: 163 passed, 0 failed** (out of 163 structural checks against requirements.md)
+- Verify loop: Verify loop reached satisfactory=true after 1 round(s).
+- [PASS] Total question_count matches locked checkpoint total — got 27, expected 27
+- [PASS] Q1: exactly 4 options — got 4
+- [PASS] Q1: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q1: explanation non-empty
+- [PASS] Q1: concept matches a confirmed checkpoint allocation
+- [PASS] Q1: page_number is a real page in the Note
+- [PASS] Q1: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q2: exactly 4 options — got 4
+- [PASS] Q2: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q2: explanation non-empty
+- [PASS] Q2: concept matches a confirmed checkpoint allocation
+- [PASS] Q2: page_number is a real page in the Note
+- [PASS] Q2: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q3: exactly 4 options — got 4
+- [PASS] Q3: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q3: explanation non-empty
+- [PASS] Q3: concept matches a confirmed checkpoint allocation
+- [PASS] Q3: page_number is a real page in the Note
+- [PASS] Q3: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q4: exactly 4 options — got 4
+- [PASS] Q4: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q4: explanation non-empty
+- [PASS] Q4: concept matches a confirmed checkpoint allocation
+- [PASS] Q4: page_number is a real page in the Note
+- [PASS] Q4: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q5: exactly 4 options — got 4
+- [PASS] Q5: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q5: explanation non-empty
+- [PASS] Q5: concept matches a confirmed checkpoint allocation
+- [PASS] Q5: page_number is a real page in the Note
+- [PASS] Q5: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q6: exactly 4 options — got 4
+- [PASS] Q6: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q6: explanation non-empty
+- [PASS] Q6: concept matches a confirmed checkpoint allocation
+- [PASS] Q6: page_number is a real page in the Note
+- [PASS] Q6: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q7: exactly 4 options — got 4
+- [PASS] Q7: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q7: explanation non-empty
+- [PASS] Q7: concept matches a confirmed checkpoint allocation
+- [PASS] Q7: page_number is a real page in the Note
+- [PASS] Q7: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q8: exactly 4 options — got 4
+- [PASS] Q8: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q8: explanation non-empty
+- [PASS] Q8: concept matches a confirmed checkpoint allocation
+- [PASS] Q8: page_number is a real page in the Note
+- [PASS] Q8: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q9: exactly 4 options — got 4
+- [PASS] Q9: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q9: explanation non-empty
+- [PASS] Q9: concept matches a confirmed checkpoint allocation
+- [PASS] Q9: page_number is a real page in the Note
+- [PASS] Q9: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q10: exactly 4 options — got 4
+- [PASS] Q10: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q10: explanation non-empty
+- [PASS] Q10: concept matches a confirmed checkpoint allocation
+- [PASS] Q10: page_number is a real page in the Note
+- [PASS] Q10: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q11: exactly 4 options — got 4
+- [PASS] Q11: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q11: explanation non-empty
+- [PASS] Q11: concept matches a confirmed checkpoint allocation
+- [PASS] Q11: page_number is a real page in the Note
+- [PASS] Q11: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q12: exactly 4 options — got 4
+- [PASS] Q12: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q12: explanation non-empty
+- [PASS] Q12: concept matches a confirmed checkpoint allocation
+- [PASS] Q12: page_number is a real page in the Note
+- [PASS] Q12: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q13: exactly 4 options — got 4
+- [PASS] Q13: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q13: explanation non-empty
+- [PASS] Q13: concept matches a confirmed checkpoint allocation
+- [PASS] Q13: page_number is a real page in the Note
+- [PASS] Q13: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q14: exactly 4 options — got 4
+- [PASS] Q14: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q14: explanation non-empty
+- [PASS] Q14: concept matches a confirmed checkpoint allocation
+- [PASS] Q14: page_number is a real page in the Note
+- [PASS] Q14: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q15: exactly 4 options — got 4
+- [PASS] Q15: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q15: explanation non-empty
+- [PASS] Q15: concept matches a confirmed checkpoint allocation
+- [PASS] Q15: page_number is a real page in the Note
+- [PASS] Q15: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q16: exactly 4 options — got 4
+- [PASS] Q16: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q16: explanation non-empty
+- [PASS] Q16: concept matches a confirmed checkpoint allocation
+- [PASS] Q16: page_number is a real page in the Note
+- [PASS] Q16: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q17: exactly 4 options — got 4
+- [PASS] Q17: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q17: explanation non-empty
+- [PASS] Q17: concept matches a confirmed checkpoint allocation
+- [PASS] Q17: page_number is a real page in the Note
+- [PASS] Q17: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q18: exactly 4 options — got 4
+- [PASS] Q18: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q18: explanation non-empty
+- [PASS] Q18: concept matches a confirmed checkpoint allocation
+- [PASS] Q18: page_number is a real page in the Note
+- [PASS] Q18: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q19: exactly 4 options — got 4
+- [PASS] Q19: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q19: explanation non-empty
+- [PASS] Q19: concept matches a confirmed checkpoint allocation
+- [PASS] Q19: page_number is a real page in the Note
+- [PASS] Q19: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q20: exactly 4 options — got 4
+- [PASS] Q20: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q20: explanation non-empty
+- [PASS] Q20: concept matches a confirmed checkpoint allocation
+- [PASS] Q20: page_number is a real page in the Note
+- [PASS] Q20: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q21: exactly 4 options — got 4
+- [PASS] Q21: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q21: explanation non-empty
+- [PASS] Q21: concept matches a confirmed checkpoint allocation
+- [PASS] Q21: page_number is a real page in the Note
+- [PASS] Q21: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q22: exactly 4 options — got 4
+- [PASS] Q22: Select-All (is_select_all=true) has 1-4 correct_answers — got 2
+- [PASS] Q22: explanation non-empty
+- [PASS] Q22: concept matches a confirmed checkpoint allocation
+- [PASS] Q22: page_number is a real page in the Note
+- [PASS] Q22: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q23: exactly 4 options — got 4
+- [PASS] Q23: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q23: explanation non-empty
+- [PASS] Q23: concept matches a confirmed checkpoint allocation
+- [PASS] Q23: page_number is a real page in the Note
+- [PASS] Q23: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q24: exactly 4 options — got 4
+- [PASS] Q24: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q24: explanation non-empty
+- [PASS] Q24: concept matches a confirmed checkpoint allocation
+- [PASS] Q24: page_number is a real page in the Note
+- [PASS] Q24: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q25: exactly 4 options — got 4
+- [PASS] Q25: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q25: explanation non-empty
+- [PASS] Q25: concept matches a confirmed checkpoint allocation
+- [PASS] Q25: page_number is a real page in the Note
+- [PASS] Q25: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q26: exactly 4 options — got 4
+- [PASS] Q26: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q26: explanation non-empty
+- [PASS] Q26: concept matches a confirmed checkpoint allocation
+- [PASS] Q26: page_number is a real page in the Note
+- [PASS] Q26: source_quote is a real (whitespace-normalized) substring of the Note
+- [PASS] Q27: exactly 4 options — got 4
+- [PASS] Q27: Multiple-Choice (is_select_all=false) has exactly 1 correct_answers — got 1
+- [PASS] Q27: explanation non-empty
+- [PASS] Q27: concept matches a confirmed checkpoint allocation
+- [PASS] Q27: page_number is a real page in the Note
+- [PASS] Q27: source_quote is a real (whitespace-normalized) substring of the Note
+
+---
+
+## Pipeline run 2026-08-13T00:06:53 (sequential) — FAILED
+
+- **Total time before failure**: 7.6s
+- **Total agent calls before failure**: 1
+- **Rate-limit (429) hits**: 0
+- **Total tokens before failure**: 4344 (1550 input, 2794 output)
+
+### Per-call breakdown (before failure)
+
+| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |
+|---|---|---|---|---|---|
+| 1 | analyzer-live-attempt1 | 7.6 | 1550 | 2794 | 4344 |
+
+### Step log (up to failure)
+```
+[2026-08-13T00:06:53] === Pipeline run start (concurrent=False) ===
+[2026-08-13T00:07:00] Analyzer attempt 1: OK, 9 concepts
+[2026-08-13T00:07:00] Target total question_count: 27 (default = 3 x 9 concepts)
+[2026-08-13T00:07:00] Checkpoint (auto-confirmed): 'Financial and social crises leading to revolution' weight=20.00 count=5
+[2026-08-13T00:07:00] === Pipeline run FAILED after 7.6s, 0 rate-limit hits ===
+```
+
+
+---
+
+## Pipeline run 2026-08-13T08:27:54 (sequential) — FAILED
+
+- **Total time before failure**: 99.0s
+- **Total agent calls before failure**: 13
+- **Rate-limit (429) hits**: 0
+- **Total tokens before failure**: 31475 (15524 input, 15951 output)
+
+### Per-call breakdown (before failure)
+
+| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |
+|---|---|---|---|---|---|
+| 1 | analyzer-live-attempt1 | 10.8 | 1550 | 3908 | 5458 |
+| 2 | generator-initial-live-Causes of the French Revolution-llama-3.3-70b-versatile-attempt1 | 1.6 | 1062 | 592 | 1654 |
+| 3 | generator-initial-live-Formation of National Assembly and Tennis Court Oath-openai/gpt-oss-20b-attempt1 | 2.3 | 985 | 1501 | 2486 |
+| 4 | generator-initial-live-Storming of the Bastille-llama-3.3-70b-versatile-attempt1 | 0.9 | 924 | 272 | 1196 |
+| 5 | generator-initial-live-Declaration of the Rights of Man and Abolition of Feudal Privileges-openai/gpt-oss-20b-attempt1 | 15.2 | 941 | 1489 | 2430 |
+| 6 | generator-initial-live-Reign of Terror and Thermidorian Reaction-llama-3.3-70b-versatile-attempt1 | 19.7 | 977 | 620 | 1597 |
+| 7 | generator-initial-live-Napoleon's coup and Consulate-llama-3.3-70b-versatile-attempt1 | 24.6 | 936 | 452 | 1388 |
+| 8 | generator-initial-live-Directory government-openai/gpt-oss-20b-attempt1 | 32.6 | 955 | 2752 | 3707 |
+| 9 | generator-initial-live-Long-term effects and Napoleonic Code-llama-3.3-70b-versatile-attempt1 | 7.3 | 964 | 373 | 1337 |
+| 10 | generator-initial-live-Long-term effects and Napoleonic Code-llama-3.3-70b-versatile-attempt2 | 1.3 | 964 | 470 | 1434 |
+| 11 | verifier-live-round1-Long-term effects and Napoleonic Code | 1.7 | 1679 | 545 | 2224 |
+| 12 | verifier-live-round1-Reign of Terror and Thermidorian Reaction | 13.5 | 1937 | 777 | 2714 |
+| 13 | verifier-live-round1-Napoleon's coup and Consulate | 17.6 | 1650 | 2200 | 3850 |
+
+### Step log (up to failure)
+```
+[2026-08-13T08:27:54] === Pipeline run start (concurrent=False) ===
+[2026-08-13T08:28:05] Analyzer attempt 1: OK, 8 concepts
+[2026-08-13T08:28:05] Target total question_count: 24 (default = 3 x 8 concepts)
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Causes of the French Revolution' weight=20.00 count=5
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Formation of National Assembly and Tennis Court Oath' weight=10.00 count=2
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Storming of the Bastille' weight=8.00 count=2
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Declaration of the Rights of Man and Abolition of Feudal Privileges' weight=12.00 count=3
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Reign of Terror and Thermidorian Reaction' weight=15.00 count=4
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Directory government' weight=10.00 count=2
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): "Napoleon's coup and Consulate" weight=12.00 count=3
+[2026-08-13T08:28:05] Checkpoint (auto-confirmed): 'Long-term effects and Napoleonic Code' weight=13.00 count=3
+[2026-08-13T08:28:07] Generator-initial [Causes of the French Revolution] (llama-3.3-70b-versatile): 5 Questions, indices [1, 2, 3, 4, 5]
+[2026-08-13T08:28:07] Generator-initial [Formation of National Assembly and Tennis Court Oath] (openai/gpt-oss-20b): 2 Questions, indices [6, 7]
+[2026-08-13T08:28:08] Generator-initial [Storming of the Bastille] (llama-3.3-70b-versatile): 2 Questions, indices [8, 9]
+[2026-08-13T08:28:23] Generator-initial [Declaration of the Rights of Man and Abolition of Feudal Privileges] (openai/gpt-oss-20b): 3 Questions, indices [10, 11, 12]
+[2026-08-13T08:28:27] Generator-initial [Reign of Terror and Thermidorian Reaction] (llama-3.3-70b-versatile): 4 Questions, indices [13, 14, 15, 16]
+[2026-08-13T08:28:52] Generator-initial [Napoleon's coup and Consulate] (llama-3.3-70b-versatile): 3 Questions, indices [19, 20, 21]
+[2026-08-13T08:28:55] Generator-initial [Directory government] (openai/gpt-oss-20b): 2 Questions, indices [17, 18]
+[2026-08-13T08:28:59] Generator-initial [Long-term effects and Napoleonic Code] (llama-3.3-70b-versatile) attempt 1: ungrounded source_quote, retrying
+[2026-08-13T08:29:00] Generator-initial [Long-term effects and Napoleonic Code] (llama-3.3-70b-versatile): 3 Questions, indices [22, 23, 24]
+[2026-08-13T08:29:02] Verifier round 1 [Long-term effects and Napoleonic Code]: satisfactory=True, flagged=[]
+[2026-08-13T08:29:16] Verifier round 1 [Reign of Terror and Thermidorian Reaction]: satisfactory=True, flagged=[]
+[2026-08-13T08:29:33] === Pipeline run FAILED after 99.0s, 0 rate-limit hits ===
+```
+
+
+---
+
+## Pipeline run 2026-08-13T08:30:26 (sequential) — FAILED
+
+- **Total time before failure**: 84.0s
+- **Total agent calls before failure**: 3
+- **Rate-limit (429) hits**: 0
+- **Total tokens before failure**: 14823 (4650 input, 10173 output)
+
+### Per-call breakdown (before failure)
+
+| # | Label | Time (s) | Input tokens | Output tokens | Total tokens |
+|---|---|---|---|---|---|
+| 1 | analyzer-live-attempt1 | 12.0 | 1550 | 3624 | 5174 |
+| 2 | analyzer-live-attempt2 | 63.1 | 1550 | 2502 | 4052 |
+| 3 | analyzer-live-attempt3 | 8.8 | 1550 | 4047 | 5597 |
+
+### Step log (up to failure)
+```
+[2026-08-13T08:30:26] === Pipeline run start (concurrent=False) ===
+[2026-08-13T08:30:38] Analyzer attempt 1: fabricated snippet 'Facing bankruptcy, Louis XVI convened the Estates‑General in', retrying
+[2026-08-13T08:31:41] Analyzer attempt 2: fabricated snippet 'Facing bankruptcy, Louis XVI convened the Estates‑General in', retrying
+[2026-08-13T08:31:50] Analyzer attempt 3: fabricated snippet 'It dismantled the legal foundations of feudalism and heredit', retrying
+[2026-08-13T08:31:50] === Pipeline run FAILED after 84.0s, 0 rate-limit hits ===
+```
+
+
+---

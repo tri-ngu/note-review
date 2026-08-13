@@ -248,15 +248,10 @@ Python parses this text deterministically into `concept` + `weight_percentage` +
 **Generator — initial pass**
 ```
 You are writing exam-style questions for one Concept from a student's study
-Note, using ONLY the snippets provided below — you have not seen and must
-not assume anything about the rest of the Note.
+Note, using ONLY the snippets provided at the end of this prompt — you have
+not seen and must not assume anything about the rest of the Note.
 
-Concept: {concept}
-Snippets:
-{snippets, each as ["quoted text" : N]}
-
-Write exactly {question_count} Questions covering this Concept. For each,
-output a block with these fields:
+For each Question, output a block with these fields:
 - question_text: a clear, self-contained question, as a quoted string
 - options: exactly 4 answer choices, as a quoted-string list, e.g.
   ["Option A", "Option B", "Option C", "Option D"]
@@ -278,6 +273,10 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- A distractor must not be something the given snippets themselves state as
+  true — if a wrong option is also asserted true elsewhere in the snippets
+  and could defensibly answer the question, that's an ambiguous second
+  correct answer, not a clean distractor
 - Don't bundle multiple distinct facts into a single option
 - If question_count exceeds what the snippets can support distinctly, vary
   phrasing/format/tested detail rather than repeating — never fabricate to
@@ -311,6 +310,14 @@ page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
 
+Concept: {concept}
+Snippets:
+{snippets, each as ["quoted text" : N]}
+
+Write exactly {question_count} Questions covering the Concept above, using
+ONLY the given Snippets, following the fields/quality bar/output format
+specified above.
+
 ```
 Python parses each block deterministically into a `Question` object (`concept` filled in by Python from the call context; each Question's permanent global index assigned positionally in output order — see Generation pipeline) — not an SDK-level structured `output_type` (see Agents section above).
 
@@ -318,17 +325,9 @@ Python parses each block deterministically into a `Question` object (`concept` f
 ```
 You are a tutor helping a student improve their review questions to study for an exam. Their
 question list has been reviewed prior and the ones not up to quality have been marked for you
-to fix. Fix ONLY the flagged Questions below, using ONLY the new snippets provided
-for the fix. Follow the critique to reevaluate the question and apply an appropriate fix.
-
-Concept: {concept}
-Flagged Questions (with the Verifier's critique and fix snippets):
-{for each flagged index: index, current Question fields, critique, snippets}
-
-Each flagged Question's existing source_quote is shown above for context
-only — it is what the flag is critiquing, not a valid source for your
-replacement. Do not reuse it in your output unless it also happens to
-appear verbatim among that flag's fix snippets.
+to fix. Fix ONLY the flagged Questions provided at the end of this prompt, using ONLY the new
+snippets provided for each fix. Follow the critique to reevaluate the question and apply an
+appropriate fix.
 
 For each flagged index, output a full replacement Question block — all
 fields, not just the changed ones — prefixed with the index it replaces:
@@ -349,7 +348,12 @@ fields, not just the changed ones — prefixed with the index it replaces:
 - page_number: the page number (int) the grounding snippet came from
 - source_quote: the exact snippet text (or relevant portion), as a quoted
   string, copied verbatim from that flag's fix snippets — NOT from the
-  Question's pre-fix source_quote shown above for context
+  Question's pre-fix source_quote given alongside each flagged Question below
+
+Each flagged Question's existing source_quote, given for context below, is
+what the flag is critiquing, not a valid source for your replacement. Do not
+reuse it in your output unless it also happens to appear verbatim among that
+flag's fix snippets.
 
 Do not touch Questions that weren't flagged — they are not in your input
 and must not appear in your output.
@@ -361,6 +365,10 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- A distractor must not be something the fix snippets themselves state as
+  true — if a wrong option is also asserted true elsewhere in the fix
+  snippets and could defensibly answer the question, that's an ambiguous
+  second correct answer, not a clean distractor
 - Don't bundle multiple distinct facts into a single option
 - source_quote must be an exact substring of one of that flag's fix
   snippets — copying the pre-fix source_quote unchanged is only acceptable
@@ -396,22 +404,22 @@ page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
 
+Concept: {concept}
+Flagged Questions (with the Verifier's critique and fix snippets):
+{for each flagged index: index, current Question fields, critique, snippets}
+
+Fix the flagged Questions above per the instructions and quality bar given.
+
 ```
 Python parses each block into its replacement `Question`, matched to the existing Question at that same global index — index is never reassigned.
 
 **Verifier**
 ```
 You are fact-checking and quality-checking Questions made by a student to review for an exam
-against their Note's FULL text below. Ensure that the questions and their answers match the note,
-and are comprehensive enough to be of quality for a review. You are only checking questions for
-the particular concept provided, and provide critique. DO NOT CHANGE any of the question contents. 
-
-Note text:
-{full note text}
-
-Questions to check (all belong to Concept: {concept}):
-{for each: index (global), question_text, options, correct_answers,
-  is_select_all, explanation, page_number, source_quote}
+against the Note text provided at the end of this prompt. Ensure that the questions and their
+answers match the note, and are comprehensive enough to be of quality for a review. You are only
+checking questions for the particular concept provided, and provide critique. DO NOT CHANGE any of
+the question contents.
 
 For EACH Question, output one block with these fields:
 - index: the Question's global index (int), copied from its input — every
@@ -428,6 +436,10 @@ For EACH Question, output one block with these fields:
 Quality bar, checked against the Note (verbatim from Verify loop detail):
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
+- No distractor is itself asserted true elsewhere in the Note text in a way
+  that could defensibly also answer the question — a "wrong" option the Note
+  itself confirms is also true is an ambiguous second correct answer, not a
+  valid distractor, and should be patched
 - is_select_all matches the intended semantics (deliberate choice, not
   count-inferred). A Select-All Question (is_select_all: true) legitimately
   has anywhere from 1 to all 4 options correct — a single correct answer
@@ -442,6 +454,12 @@ Quality bar, checked against the Note (verbatim from Verify loop detail):
 - source_quote is a real quote genuinely present on page_number and matches verbatim, and it
   actually supports correct_answers/explanation — not fabricated, vague, or
   contradicting page_number
+- Question isn't a near-duplicate of another Question in this same call's
+  list — if two Questions test the same underlying fact/answer off the same
+  grounding with no meaningfully different angle (reworded phrasing alone
+  doesn't count as different), patch the weaker/later one, and use the
+  critique to name what distinct angle or detail the replacement should
+  cover instead
 
 Output format:
 - Separate each Question's block from the next with at least 2 newlines
@@ -464,6 +482,15 @@ snippets: []
 
 satisfactory: false
 --END--
+
+Note text:
+{full note text}
+
+Questions to check (all belong to Concept: {concept}):
+{for each: index (global), question_text, options, correct_answers,
+  is_select_all, explanation, page_number, source_quote}
+
+Evaluate each Question above against the Note text and quality bar given.
 
 ```
 Python parses each block into a `VerifierIssue` (or a no-op for "keep") plus the trailing `satisfactory` line — not an SDK-level structured `output_type` (see Agents section above). Do not flag Questions outside your assigned index set. Every snippet you extract must be an exact substring of the Note text above.
@@ -598,11 +625,13 @@ class Answer(BaseModel):
 
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
+- No distractor is itself asserted true elsewhere in the Note text in a way that could defensibly also answer the question — a "wrong" option the Note itself confirms is also true is an ambiguous second correct answer, not a valid distractor, and should be patched (added 2026-08-13, `agent-testing` branch — caught live on `french_revolution_note.txt`: a "Poor harvests" distractor was marked wrong for a financial-crisis question, but the Note itself states poor harvests also worsened the crisis)
 - `is_select_all` matches the intended semantics (deliberate choice, not count-inferred). A Select-All Question (`is_select_all: true`) legitimately has anywhere from 1 to all 4 options correct — a single correct answer does NOT by itself mean `is_select_all` should be `false`. Only flag `is_select_all` if the question's own phrasing/framing doesn't fit its value — never flag it purely because `len(correct_answers)` is 1
 - No ambiguous or multiple-valid-reading phrasing
 - `explanation` actually explains the correct answer using Note content
 - Question actually matches its assigned `concept`
 - `source_quote` is a real quote genuinely present on `page_number`, and it actually supports `correct_answers`/`explanation` — not fabricated, vague, or contradicting `page_number` (this check has real teeth against fabrication: `source_quote` is also verified deterministically as a verbatim substring wherever it's produced, but *whether it actually supports the answer* is a judgment call only the Verifier can make)
+- Question isn't a near-duplicate of another Question in the same call's list — if two Questions test the same underlying fact/answer off the same grounding with no meaningfully different angle (reworded phrasing alone doesn't count as different), patch the weaker/later one, naming in the critique what distinct angle or detail the replacement should cover instead (added 2026-08-13 — caught live: two Questions on `french_revolution_note.txt`'s "Reign of Terror" concept both tested "what ended the Terror" off the same snippet)
 
 Every flagged issue also carries its own `snippets` (verbatim Note quotes + page numbers backing the requested fix) — the Verifier extracts these itself, from whatever Note pages it was shown (see Snippet grounding above — page-scoped, not the full Note, as of 2026-08-11); the patch call that acts on the feedback never sees the Note, only these.
 

@@ -121,7 +121,16 @@ def parse_snippets(raw: str) -> list[ConceptSnippet]:
     return [ConceptSnippet(quote=q, page_number=int(n)) for q, n in _SNIPPET_RE.findall(raw)]
 
 
+_HYPHEN_VARIANTS = ("‐", "‑")  # HYPHEN, NON-BREAKING HYPHEN — folded to
+# ASCII '-'; models (esp. gpt-oss-120b) sometimes substitute these into an
+# otherwise-verbatim quote as "smart typography." En/em dashes (U+2013/U+2014)
+# are deliberately left alone — semantically distinct, and already match fine
+# since they appear as-is in both model output and Note text.
+
+
 def normalize_whitespace(s: str) -> str:
+    for variant in _HYPHEN_VARIANTS:
+        s = s.replace(variant, "-")
     return " ".join(s.split())
 
 
