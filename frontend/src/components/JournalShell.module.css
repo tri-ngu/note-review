@@ -1,0 +1,100 @@
+.journal {
+  --cream: #f4f2e6;
+  --sage: #8fa684;
+  --forest: #4b6043;
+  --olive: #34402c;
+  --gold: #a3742a;
+  --line: #c8cdb5;
+
+  min-height: 100vh;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 5rem 1.25rem;
+  background: var(--cream);
+  color: var(--olive);
+  font-family: Constantia, Georgia, serif;
+  font-size: 16px;
+  line-height: 1.55;
+  box-sizing: border-box;
+}
+.journal * {
+  box-sizing: border-box;
+}
+.journal h1,
+.journal h2,
+.journal label,
+.journal button {
+  font-family: Rockwell, Georgia, serif;
+}
+
+.cover {
+  text-align: center;
+  padding-bottom: 1.75rem;
+}
+.cover .leaf {
+  font-size: 1.7rem;
+  color: var(--forest);
+  display: block;
+}
+.cover h1 {
+  margin: 0.25rem 0 0 0;
+  font-size: 1.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.cover p {
+  margin: 0.35rem 0 0 0;
+  font-style: italic;
+  color: var(--forest);
+  font-size: 0.95rem;
+}
+
+.sectionTab {
+  background: var(--sage);
+  color: #fff;
+  padding: 1rem 1.75rem 2.1rem 1.75rem;
+  margin-top: 1.5rem;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 82%,
+    87.5% 100%,
+    75% 82%,
+    62.5% 100%,
+    50% 82%,
+    37.5% 100%,
+    25% 82%,
+    12.5% 100%,
+    0 82%
+  );
+}
+.tabEyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cream);
+  opacity: 0.85;
+  margin: 0 0 0.2rem 0;
+}
+.sectionTab h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  letter-spacing: 0.03em;
+}
+.sectionTab p {
+  margin: 0.4rem 0 0 0;
+  font-size: 0.88rem;
+  font-style: italic;
+  color: #f2f5ee;
+  max-width: 60ch;
+}
+
+.page {
+  background: var(--cream);
+  background-image: linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 100% 32px, 32px 100%;
+  border: 1px solid var(--line);
+  border-top: none;
+  padding: 2rem 1.75rem 2.25rem 1.75rem;
+}
