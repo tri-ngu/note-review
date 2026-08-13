@@ -7,13 +7,15 @@ import styles from './Flashcard.module.css';
 interface FlashcardProps {
   question: Question;
   otherConcepts: string[];
-  onSave: (updated: Question, renameFrom?: string) => void;
+  onSave: (updated: Question, renameFrom?: string) => Promise<string | null>;
   onEditingChange: (isEditing: boolean) => void;
 }
 
 export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: FlashcardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const toggleFlip = () => {
     if (isEditing) return;
@@ -29,17 +31,26 @@ export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: 
   };
 
   const startEditing = () => {
+    setSaveError(null);
     setIsEditing(true);
     onEditingChange(true);
   };
 
-  const handleSave = (updated: Question, renameFrom?: string) => {
-    onSave(updated, renameFrom);
+  const handleSave = async (updated: Question, renameFrom?: string) => {
+    setIsSaving(true);
+    const error = await onSave(updated, renameFrom);
+    setIsSaving(false);
+    if (error) {
+      setSaveError(error);
+      return; // keep the edit form open — the user's draft isn't lost
+    }
+    setSaveError(null);
     setIsEditing(false);
     onEditingChange(false);
   };
 
   const handleCancel = () => {
+    setSaveError(null);
     setIsEditing(false);
     onEditingChange(false);
   };
@@ -75,7 +86,14 @@ export function Flashcard({ question, otherConcepts, onSave, onEditingChange }: 
         <div className={`${styles.cardFace} ${styles.cardBack}`}>
           <div className={styles.qBody}>
             {isEditing ? (
-              <QuestionEditForm question={question} otherConcepts={otherConcepts} onSave={handleSave} onCancel={handleCancel} />
+              <QuestionEditForm
+                question={question}
+                otherConcepts={otherConcepts}
+                onSave={handleSave}
+                onCancel={handleCancel}
+                saveError={saveError}
+                isSaving={isSaving}
+              />
             ) : (
               <>
                 <span className={styles.typeTag}>{question.is_select_all ? 'Select All' : 'Multiple Choice'}</span>

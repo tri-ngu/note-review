@@ -8,7 +8,7 @@ import styles from './FlashcardView.module.css';
 interface FlashcardViewProps {
   questionSet: QuestionSet;
   onStartReview: () => void;
-  onUpdateQuestion: (index: number, updated: Question, renameFrom?: string) => void;
+  onUpdateQuestion: (index: number, updated: Question, renameFrom?: string) => Promise<string | null>;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
 }

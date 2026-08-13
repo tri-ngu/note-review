@@ -33,6 +33,15 @@ function errorMessageForSessionStatus(status: SessionResponse['status']): string
   }
 }
 
+async function errorDetail(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { detail?: string };
+    return body.detail ?? `Request failed (${res.status})`;
+  } catch {
+    return `Request failed (${res.status})`;
+  }
+}
+
 function FlashcardHome() {
   const [view, setView] = useState<'browse' | 'review'>('browse');
   const [load, setLoad] = useState<LoadState>({ status: 'loading' });
@@ -58,7 +67,7 @@ function FlashcardHome() {
     };
   }, []);
 
-  const updateQuestion = async (index: number, updated: Question, renameFrom?: string) => {
+  const updateQuestion = async (index: number, updated: Question, renameFrom?: string): Promise<string | null> => {
     if (renameFrom) {
       const renameRes = await fetch(`/concepts/${encodeURIComponent(renameFrom)}`, {
         method: 'PATCH',
@@ -66,8 +75,7 @@ function FlashcardHome() {
         body: JSON.stringify({ new_name: updated.concept }),
       });
       if (!renameRes.ok) {
-        console.error('Concept rename failed', await renameRes.text());
-        return;
+        return `Could not rename concept: ${await errorDetail(renameRes)}`;
       }
     }
 
@@ -85,8 +93,7 @@ function FlashcardHome() {
       }),
     });
     if (!patchRes.ok) {
-      console.error('Question patch failed', await patchRes.text());
-      return;
+      return `Could not save question: ${await errorDetail(patchRes)}`;
     }
     const savedQuestion = (await patchRes.json()) as Question;
 
@@ -98,6 +105,7 @@ function FlashcardHome() {
       }
       return { status: 'ready', questionSet: { questions } };
     });
+    return null;
   };
 
   const handleCreateRoom = async () => {

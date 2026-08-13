@@ -9,11 +9,13 @@ interface QuestionEditFormProps {
   otherConcepts: string[];
   onSave: (updated: Question, renameFrom?: string) => void;
   onCancel: () => void;
+  saveError?: string | null;
+  isSaving?: boolean;
 }
 
 type FormErrors = EditErrors & { concept?: string };
 
-export function QuestionEditForm({ question, otherConcepts, onSave, onCancel }: QuestionEditFormProps) {
+export function QuestionEditForm({ question, otherConcepts, onSave, onCancel, saveError, isSaving }: QuestionEditFormProps) {
   const [questionText, setQuestionText] = useState(question.question_text);
   const [options, setOptions] = useState<[string, string, string, string]>([...question.options]);
   const [correctAnswers, setCorrectAnswers] = useState<number[]>([...question.correct_answers]);
@@ -172,12 +174,13 @@ export function QuestionEditForm({ question, otherConcepts, onSave, onCancel }: 
         </select>
       </label>
       {errors.concept && <p className={styles.error}>{errors.concept}</p>}
+      {saveError && <p className={styles.error}>{saveError}</p>}
 
       <div className={styles.actions}>
-        <button className={styles.saveBtn} onClick={handleSave}>
-          Save
+        <button className={styles.saveBtn} onClick={handleSave} disabled={isSaving}>
+          {isSaving ? 'Saving…' : 'Save'}
         </button>
-        <button className={styles.cancelBtn} onClick={onCancel}>
+        <button className={styles.cancelBtn} onClick={onCancel} disabled={isSaving}>
           Cancel
         </button>
       </div>
