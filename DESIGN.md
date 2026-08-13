@@ -669,14 +669,14 @@ FastAPI backend, session identified via HTTP-only cookie (set on first `/upload`
 - Precondition: session has an uploaded Note and no successful `QuestionSet` (last run failed).
 
 ### `PATCH /questions/{index}`
-- Request: partial `Question` fields (`question_text`, `options`, `correct_answers`, `is_select_all`, `explanation`, `page_number`).
+- Request: partial `Question` fields (`concept`, `question_text`, `options`, `correct_answers`, `is_select_all`, `explanation`, `page_number`). `concept` here is how Reassign (Editing's Concept editing) persists — moves only this Question to an existing concept, others unaffected; Rename (all Questions sharing a concept) goes through `PATCH /concepts/{old_name}` below instead.
 - Response `200`: the updated `Question`.
-- Errors `404`: no active `QuestionSet` for this session, or `index` out of range. Never resizes the list (see Editing).
+- Errors `404`: no active `QuestionSet` for this session, or `index` out of range. `422` if the merged result fails `Question`'s own validators (e.g. toggling `is_select_all` without adjusting `correct_answers`' count). Never resizes the list (see Editing).
 
 ### `PATCH /concepts/{old_name}`
 - Request: `{ new_name: str }`
 - Response `200`: `{ concept: str, updated_count: int }` — the new label plus how many Questions were affected.
-- Errors: `404` if `old_name` doesn't match any Question's `concept` in the session's `QuestionSet`; `409` if `new_name` already matches a different existing concept (rename is blocked, not merged — see Editing's Concept editing). Once a real backend exists, Rename fires this as a second, conditional request rather than folding into the `PATCH /questions/{index}` call.
+- Errors: `404` if `old_name` doesn't match any Question's `concept` in the session's `QuestionSet`; `409` if `new_name` already matches a different existing concept (rename is blocked, not merged — see Editing's Concept editing). The frontend fires this as a second, conditional request before `PATCH /questions/{index}`'s own call for the edited Question's other fields, rather than folding rename into that call.
 
 ### `GET /session`
 Lets the frontend rehydrate on page load without re-uploading — needed for `requirements.md`'s persistence acceptance criteria (closing/reopening the browser mid-server-run must still show existing state).

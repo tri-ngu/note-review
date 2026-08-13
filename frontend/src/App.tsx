@@ -1,26 +1,102 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import type { Question, QuestionSet } from './types/question';
 import { renameConceptEverywhere } from './lib/renameConcept';
 import { FlashcardView } from './components/FlashcardView';
 import { ReviewSession } from './components/ReviewSession';
-import { fixtureQuestionSet } from './fixtures/fixture';
 import { HostPage } from './room/HostPage';
 import { JoinPage } from './room/JoinPage';
 import { PlayerPage } from './room/PlayerPage';
 
+type SessionResponse = {
+  status: 'empty' | 'checkpoint_pending' | 'generating' | 'ready' | 'failed';
+  questions?: Question[];
+};
+
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; questionSet: QuestionSet };
+
+function errorMessageForSessionStatus(status: SessionResponse['status']): string {
+  switch (status) {
+    case 'empty':
+      return 'No Question Set for this session yet — upload a Note and generate one first.';
+    case 'checkpoint_pending':
+      return 'A Note has been analyzed but generation has not been confirmed/run yet.';
+    case 'generating':
+      return 'Generation is still running for this session.';
+    case 'failed':
+      return 'The last generation run for this session failed.';
+    default:
+      return 'No Question Set is available for this session.';
+  }
+}
+
 function FlashcardHome() {
   const [view, setView] = useState<'browse' | 'review'>('browse');
-  const [questionSet, setQuestionSet] = useState<QuestionSet>(fixtureQuestionSet);
+  const [load, setLoad] = useState<LoadState>({ status: 'loading' });
   const navigate = useNavigate();
 
-  const updateQuestion = (index: number, updated: Question, renameFrom?: string) => {
-    setQuestionSet((prev) => {
-      let questions = prev.questions.map((q, i) => (i === index ? updated : q));
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/session')
+      .then((res) => res.json() as Promise<SessionResponse>)
+      .then((data) => {
+        if (cancelled) return;
+        if (data.status === 'ready' && data.questions) {
+          setLoad({ status: 'ready', questionSet: { questions: data.questions } });
+        } else {
+          setLoad({ status: 'error', message: errorMessageForSessionStatus(data.status) });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoad({ status: 'error', message: 'Could not reach the backend.' });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const updateQuestion = async (index: number, updated: Question, renameFrom?: string) => {
+    if (renameFrom) {
+      const renameRes = await fetch(`/concepts/${encodeURIComponent(renameFrom)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ new_name: updated.concept }),
+      });
+      if (!renameRes.ok) {
+        console.error('Concept rename failed', await renameRes.text());
+        return;
+      }
+    }
+
+    const patchRes = await fetch(`/questions/${index + 1}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        concept: updated.concept,
+        question_text: updated.question_text,
+        options: updated.options,
+        correct_answers: updated.correct_answers,
+        is_select_all: updated.is_select_all,
+        explanation: updated.explanation,
+        page_number: updated.page_number,
+      }),
+    });
+    if (!patchRes.ok) {
+      console.error('Question patch failed', await patchRes.text());
+      return;
+    }
+    const savedQuestion = (await patchRes.json()) as Question;
+
+    setLoad((prev) => {
+      if (prev.status !== 'ready') return prev;
+      let questions = prev.questionSet.questions.map((q, i) => (i === index ? savedQuestion : q));
       if (renameFrom) {
         questions = renameConceptEverywhere(questions, renameFrom, updated.concept);
       }
-      return { questions };
+      return { status: 'ready', questionSet: { questions } };
     });
   };
 
@@ -35,13 +111,21 @@ function FlashcardHome() {
     navigate('/join');
   };
 
+  if (load.status === 'loading') {
+    return <p>Loading…</p>;
+  }
+
+  if (load.status === 'error') {
+    return <p>{load.message}</p>;
+  }
+
   if (view === 'review') {
-    return <ReviewSession questionSet={questionSet} onExit={() => setView('browse')} />;
+    return <ReviewSession questionSet={load.questionSet} onExit={() => setView('browse')} />;
   }
 
   return (
     <FlashcardView
-      questionSet={questionSet}
+      questionSet={load.questionSet}
       onStartReview={() => setView('review')}
       onUpdateQuestion={updateQuestion}
       onCreateRoom={handleCreateRoom}

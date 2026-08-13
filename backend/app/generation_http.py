@@ -153,6 +153,7 @@ async def generate_retry(request: Request, response: Response):
 
 
 class QuestionPatchRequest(BaseModel):
+    concept: str | None = None
     question_text: str | None = None
     options: list[str] | None = None
     correct_answers: list[int] | None = None
