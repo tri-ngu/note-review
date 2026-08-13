@@ -48,16 +48,23 @@ Implemented and iterated on the `agent-testing` branch, then ported into `backen
 - Added a Generator quality-bar rule on incorrect-option requirements (Generators only — Verifier prompt left untouched per Tri's call).
 - Wired the frontend flashcard/edit view to the real backend session (`GET /session`, `PATCH /questions/{index}`, `PATCH /concepts/{old_name}`) instead of a local fixture; fixed a bug where a failed PATCH silently closed the edit form without saving; dropped a dead root-level `requirements.txt`.
 
+### Frontend upload/checkpoint/generating UI
 
+Built on branch `worktree-upload-checkpoint-generating-ui` (pushed to origin, not yet merged), implementing the design from `design-mockups/selected-design.html` (demo-only "Preview state"/"Show next stage" controls dropped) and wiring it to the real pipeline.
+
+- Three new stages — Upload (`POST /upload`, drag/drop + file picker, upload error mapping), Checkpoint (editable weight/count/name, delete-with-rebalance, source-quote view, live 100% balance gate), Generating (live progress dial driven by real `POST /generate` SSE events) — sharing a `JournalShell` chrome component.
+- `App.tsx`'s session flow now routes Upload → Checkpoint → Generating → the existing flashcard/Review view, and resumes correctly from `GET /session` at any stage on reload (including polling to completion if reloaded mid-generation).
+- Weight-rebalance, checkpoint-totals, SSE-buffer-parsing, and generation-progress logic extracted into pure `lib/` modules, TDD'd — 66/66 frontend tests pass; backend untouched (78/78 backend tests pass).
+- Live-verified in Chrome against the real backend, not just unit tests: real Analyzer run (7 concepts from a synthetic water-cycle PDF), delete/rebalance, the imbalance guard, a full real `/generate` run through 4 verify rounds, landing on the real 18-question flashcard view, plus reload-while-ready resume. Reload-mid-generation resume verified by code review only (didn't catch a live window for it).
 
 ## Current State
 
-All 4 core docs are in sync. The flashcard prototype (all 3 builds), Game Room, and the agent pipeline are built and merged into `main`; the flashcard/Review/editing frontend is wired to the real backend session. Remaining gap: no frontend upload/Analyzer-checkpoint UI yet, so a new Question Set can currently only be created by calling the backend directly — see Todo.
+All 4 core docs are in sync. The flashcard prototype (all 3 builds), Game Room, and the agent pipeline are built and merged into `main`; the flashcard/Review/editing frontend is wired to the real backend session. The frontend Upload/Checkpoint/Generating UI is built and live-verified but sits on an unmerged branch (`worktree-upload-checkpoint-generating-ui`) — a new Question Set can already be created end-to-end from the browser on that branch, pending merge to `main`.
 
 ## Todo
 
-- [ ] Live end-to-end verification of the merged pipeline — upload a real Note, confirm agent generation, then flashcard display/Review Session/Game Room all work against that same `QuestionSet`. Attempted 2026-08-13 (`french_revolution_note.txt`); blocked mid-Verifier-round-1 by Groq's daily token cap (resets on a rolling 24h window) — retry once it resets.
-- [ ] Build frontend upload + Analyzer-checkpoint screens — the flashcard/edit view is wired to the backend, but there's still no way to create a new Question Set from the browser. Deferred to a later session per Tri's call.
+- [ ] Merge `worktree-upload-checkpoint-generating-ui` into `main`.
+- [ ] Live end-to-end verification of the merged pipeline — upload a real Note, confirm agent generation, then flashcard display/Review Session/Game Room all work against that same `QuestionSet`. Attempted 2026-08-13 (`french_revolution_note.txt`); blocked mid-Verifier-round-1 by Groq's daily token cap (resets on a rolling 24h window). Upload→Checkpoint→Generating→flashcard-display leg now verified live on a separate synthetic Note (see Frontend upload/checkpoint/generating UI above) — Review Session and Game Room against that same freshly generated `QuestionSet` still unverified.
 - [ ] User accounts to store previous question sets.
 - [ ] Research a way to store/rate questions so models can learn from them without spending a lot more tokens.
 
