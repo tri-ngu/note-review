@@ -275,7 +275,14 @@ async def _verify_concept(
     step_log: list[str],
     on_event: Callable[[dict], None] | None = None,
 ) -> tuple[str, list[VerifierIssue], bool]:
-    relevant_pages = {q.page_number for q in indexed.values()}
+    referenced_pages = {q.page_number for q in indexed.values()}
+    # Include each referenced page's immediate neighbors (N-1, N+1) too — a
+    # fix snippet often needs a caveat/detail stated just before or after the
+    # page a Question was drawn from, not only on that exact page. See
+    # DESIGN.md's Snippet grounding. _extract_pages silently drops any
+    # requested page number that doesn't exist (e.g. page 0, or one past the
+    # Note's last page), so no bounds-checking is needed here.
+    relevant_pages = {p + delta for p in referenced_pages for delta in (-1, 0, 1)}
     scoped_note = _extract_pages(note_text, relevant_pages)
     questions_text = "\n\n".join(_fmt_question_for_verifier(idx, q) for idx, q in indexed.items())
     prompt = build_verifier_prompt(scoped_note, concept, questions_text)

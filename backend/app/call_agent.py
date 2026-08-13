@@ -146,6 +146,9 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- Incorrect options must be closely related to the question, requiring real
+  thought to rule out — but must not convey the same meaning as any correct
+  answer, just reworded
 - A distractor must not be something the given snippets themselves state as
   true — if a wrong option is also asserted true elsewhere in the snippets
   and could defensibly answer the question, that's an ambiguous second
@@ -235,6 +238,9 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- Incorrect options must be closely related to the question, requiring real
+  thought to rule out — but must not convey the same meaning as any correct
+  answer, just reworded
 - A distractor must not be something the fix snippets themselves state as
   true — if a wrong option is also asserted true elsewhere in the fix
   snippets and could defensibly answer the question, that's an ambiguous
