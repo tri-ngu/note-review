@@ -58,7 +58,8 @@ Generator — initial pass (unlooped, but fanned out concurrently)
 Verify loop (up to 5 iterations)
    - Verifier checks every Question — one concurrent call per concept, each
      call sees only its own concept's Question list (addressed by their
-     permanent global index) but the FULL Note
+     permanent global index) plus only the Note pages those Questions
+     reference (page-scoped, not the full Note)
      (see Verify Loop Detail, Concurrent generation below)
    - if satisfactory == true (every concept's call agreed): break early
    - else: Generator patches (in place, same index) only the flagged Questions —
@@ -111,25 +112,28 @@ Hard limits and enforced caps, gathered in one place — scattered across the do
 | Limit | Value | Enforced where | Notes |
 |---|---|---|---|
 | Note upload size | 20MB | Upload validation, before Analyzer runs | Per `requirements.md`; no separate page-count limit |
-| Groq free tier (`gpt-oss-120b`) | 30 RPM, 1K RPD, 8K TPM, 200K TPD | Not enforced in code yet | [console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits). Tied to `gpt-oss-120b` — re-check on any model swap (`deepseek-r1-distill-llama-70b` decommissioned mid-project, see Weight reconciliation) |
+| Groq free tier (`gpt-oss-120b`, Analyzer/Verifier) | 30 RPM, 1K RPD, 8K TPM, 200K TPD | Not enforced in code yet | [console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits). Tied to `gpt-oss-120b` — re-check on any model swap (`deepseek-r1-distill-llama-70b` decommissioned mid-project, see Weight reconciliation) |
+| Groq free tier — Generator pool models | `llama-3.3-70b-versatile`: 30 RPM, 1K RPD, 12K TPM, 100K TPD. `openai/gpt-oss-20b`: 30 RPM, 1K RPD, 8K TPM, 200K TPD | Not enforced in code yet | Each model has its own independent rate-limit bucket, separate from `gpt-oss-120b`'s (Analyzer/Verifier) — see Concurrent generation's Dual-model Generator pool below |
 | Verify loop iterations | 5 | Python orchestration loop, hard stop | Ships best-effort past cap, no error |
 | Room Players | 10 | `POST /rooms/{pin}/join` | Per `requirements.md` |
 | Room PIN space | 10,000 (4-digit) | PIN generation, retry-on-collision | Real usage ~3 concurrent Rooms — collision is rare, retry loop is trivial |
 | Room question timer | 30s | Server-side, per QUESTION_ACTIVE round | Server-authoritative, see Room answer submission below |
 | Room state TTL | 5 min | Periodic sweep, from `terminal_at` (or creation time for abandoned lobbies) | See Room cleanup below |
 | Concurrent Rooms | unbounded (architecturally) | PIN-keyed dict | Expected real usage ~3; single-instance-pinned deployment assumption (see Room data model below) doesn't scale beyond what one Vercel Fluid Compute instance can hold in memory |
+| Concurrency cap | 3 simultaneous in-flight calls (`call_agent.CONCURRENCY_CAP`) | `asyncio.Semaphore` inside `call_agent_async` | Live-tested 2026-08-12: cuts rate-limit hits (21 uncapped → 13 capped) but doesn't recover wall-clock time (373.6s capped vs. 365.4s sequential) — a single model's 8K TPM ceiling is still the bottleneck at this cap. Sequential is the default; the real payoff comes from the dual-model Generator pool below, not from tuning this cap further |
+| Completion-token cap | Per call: base overhead + count × per-item margin (`pipeline.py`'s `*_BASE_TOKENS`/`*_PER_QUESTION_TOKENS`) | `RunConfig(model_settings=ModelSettings(max_tokens=...))`, every call site | Live-tested 2026-08-12 — no truncation failures across sequential and concurrent runs. Sized generously — bounds runaway output, not meant to shave calls close to the edge |
 
-**Concurrency vs. rate limit**: worst case per request is N concurrent initial-pass calls + 5 rounds × (up to N Verifier calls + up to N patch calls), N = concept count. TPM (8K) is the tighter constraint in practice, not RPM (30) — every Verifier call alone carries the full Note, so a handful of concurrent Verifier calls burns TPM budget before RPM becomes the issue. No concurrency cap and no 429 backoff/retry exist yet (see Concurrent generation's Concurrency cap below) — a 429 currently surfaces as a generic pipeline failure, inheriting the existing retry-button behavior (`requirements.md` Error handling) rather than being handled inside the pipeline.
+**Concurrency vs. rate limit**: worst case per request is N concurrent initial-pass calls + 5 rounds × (up to N Verifier calls + up to N patch calls), N = concept count. TPM (8K) is the tighter constraint in practice, not RPM (30) — every Verifier call carries at least the relevant Note pages (page-scoped, not the full Note — see Snippet grounding below), so a handful of concurrent Verifier calls can still burn TPM budget before RPM becomes the issue, though less than when it sent the full Note every time. `call_agent_async` has 429 backoff/retry built in; a 429 that exhausts its retries still surfaces as a generic pipeline failure, inheriting the existing retry-button behavior (`requirements.md` Error handling). The pipeline-wide concurrency cap above (see Concurrent generation's Concurrency cap below) bounds simultaneous in-flight calls across every stage, not just one.
 
 ## Agents (OpenAI Agents SDK, on Groq)
 
 Three distinct agents, each returning a formatted free-text response that Python parses deterministically into the corresponding objects — not an SDK-level structured Pydantic `output_type`. Orchestration (the checkpoint, the up-to-5 verify loop, patch dispatch) is plain Python control flow — **not** agent-internal handoffs or a self-driven tool loop. Each agent call is stateless; Note text and any other needed context is passed explicitly into every call. When calling any agent, send only that agent's own prompt below — the block wrapped in ``` — with any `{field}` placeholders filled in by Python control flow before sending. All agent output will be wrapped between --START-- and --END-- to indicate which parts should be read.
 
 - **Analyzer** — input: Note text only (a user-specified target question count, if given, isn't used by this call — see the note below the Analyzer prompt). Output: free text, one block per Concept, parsed by Python into `concept` + `weight_percentage` + `snippets` — the `ConceptAllocation` fields minus `question_count`, which Python derives afterward from `weight_percentage` (see Weight reconciliation). Runs exactly once, before the loop.
-- **Generator** — never reads the full Note, in either shape; only ever sees snippets:
+- **Generator** — never reads the full Note, in either shape; only ever sees snippets. Both passes dispatch through a two-worker pool across two models (`llama-3.3-70b-versatile`, `openai/gpt-oss-20b`) instead of a single model — see Concurrent generation's Dual-model Generator pool below:
   - **Initial pass**: one call per concept, run concurrently. Input is that concept's `(concept, question_count)` slot plus the Analyzer's snippets for it. Output: exactly `question_count` `Question` objects for that concept.
   - **Patch pass**: one call per *concept among the flagged indices*, run concurrently (not one call for every flagged index across the whole set). Input is the current numbered Question list, that concept's flagged indices + feedback, and the Verifier's snippets backing that fix. Output: replacement `Question` objects only for the indices it was asked to patch — same indices, list length unchanged.
-- **Verifier** — one call per concept, run concurrently (see Concurrent generation below). Input: the FULL Note text (the only agent that ever gets it — see Snippet grounding below for why) plus only that concept's Questions, addressed by their permanent global index. Output per call: a critique for that concept's flagged indices (now including the Verifier's own extracted snippets backing each fix, not just prose feedback) plus a per-call `satisfactory: bool`; the round's overall result is `satisfactory` iff every concept's call was.
+- **Verifier** — one call per concept, run concurrently (see Concurrent generation below). Input: only the Note pages relevant to that call's Questions (not the full Note — see Snippet grounding below for why) plus that concept's Questions, addressed by their permanent global index. Output per call: a critique for that concept's flagged indices (now including the Verifier's own extracted snippets backing each fix, not just prose feedback) plus a per-call `satisfactory: bool`; the round's overall result is `satisfactory` iff every concept's call was.
 
 
 
@@ -139,22 +143,32 @@ Generator's initial pass fires one call per concept concurrently (`asyncio.gathe
 
 Patch pass mirrors the per-concept fan-out directly — since a Verifier call's findings are already scoped to one concept's list, patch dispatch buckets by concept for free: one call per concept with any flagged issues, not one call per flagged index across the whole set. Grouping still matters for the same reason — two flagged Questions on the same concept land in one call, so the patch agent can't independently write near-duplicate fixes the way isolated per-index calls could. Each call is validated to return exactly its assigned (global) indices before merging back into that concept's list.
 
-Verifier gets the same per-concept fan-out — one call per concept, operating on that concept's own Question list (each entry still carrying its permanent global index from the initial pass) — but unlike the Generator, every Verifier call still carries the full Note (narrowing it isn't safe, see Snippet grounding). A round's `satisfactory` is the AND of every concept's call; each call is validated to only return indices belonging to its own concept's list.
+Verifier gets the same per-concept fan-out — one call per concept, operating on that concept's own Question list (each entry still carrying its permanent global index from the initial pass) — carrying only the Note pages relevant to those Questions, not the full Note (see Snippet grounding below). A round's `satisfactory` is the AND of every concept's call; each call is validated to only return indices belonging to its own concept's list. **Verify-loop skip**: a concept cleared (satisfactory) in an earlier round is never re-verified in a later round — only concepts still pending (unverified, or patched last round) get a Verifier call each round, since a cleared concept's Questions can't change unless it's patched. See Verify loop detail below.
 
 `call_agent` has an async implementation (`call_agent_async`, via `Runner.run`) with a sync wrapper for the pipeline's one non-concurrent call site (the Analyzer). Every call carries a `label`, recorded in an in-memory `CALL_LOG` (input/output/timing) since concurrent calls sharing an `Agent` would otherwise be indistinguishable in a transcript; optional `CALL_LOG_HOOK` streams each call on completion for live progress tooling.
 
-**Concurrency cap**: nothing bounds simultaneous in-flight calls today — a high-concept-count Note can fire enough concurrent calls in one round to exceed Groq's free-tier limits (see Capacity map), TPM more often than RPM, since every Verifier call alone carries the full Note. Plan: a pipeline-wide semaphore capping simultaneous in-flight calls (placeholder N, needs live tuning against the 8K TPM ceiling), applying across the initial pass and every round's Verifier/patch fan-outs alike, not just one stage.
+**Concurrency cap**: a pipeline-wide `asyncio.Semaphore` (`call_agent.CONCURRENCY_CAP`, value 3) gates every `Runner.run` call inside `call_agent_async`, regardless of which stage triggers it — initial pass, and every round's Verifier/patch fan-outs alike. No-op in sequential mode (calls are already one-at-a-time there). Motivation: an uncapped concurrent run on a 9-concept Note hit 21 rate-limit hits and finished no faster than sequential (298.1s vs. 290.5s), since the retries just serialized it back into a queue anyway. Live-tested 2026-08-12 (`--concurrent`, `water_cycle_note.txt`): cut rate-limit hits from 21 (uncapped) to 13, but did not recover wall-clock time — 373.6s capped-concurrent vs. 365.4s sequential (same day, same note, 27 Questions, 163/163 quality checks both runs) — a single model's 8K TPM ceiling is still the real bottleneck at semaphore=3, not raw request scheduling. Sequential is the default; the cap's real payoff comes from the dual-model role-split below, not further tuning of this cap alone.
+
+**Dual-model Generator pool**: Generator's initial-pass and patch-pass calls dispatch through a two-worker pool (`generator_pool.py`) instead of a single model. Each worker is bound to one of two models (`llama-3.3-70b-versatile`, `openai/gpt-oss-20b`) and drains a shared job queue — one job per Concept for the initial pass, one job per flagged Concept per patch round — so both models make progress concurrently, each processing exactly one job at a time. Failover: a job that fails on its own model (after that model's own standard retry/backoff) is requeued for the other worker to try fresh, on its own model; a job failing on every model surfaces as a `PipelineError`. The pool's own two-worker structure governs Generator concurrency directly — the `CONCURRENCY_CAP` semaphore above remains in the call path but is never the binding constraint here, since the pool never has more than two Generator calls in flight at once. Two quote-format fixes ship alongside the pool: `parse_list_str` falls back to `ast.literal_eval` on a single/mixed-quoted Python-list literal when the strict double-quoted count isn't 4 (needed because `llama-3.3-70b-versatile` sometimes writes `options` single-quoted), and both Generator prompts explicitly instruct double-quotes-only.
+
+Live-tested 2026-08-12:
+- Phase 1 (Generator-only, isolated): both models received jobs on both the initial pass (2 concepts to `llama-3.3-70b-versatile`, 1 to `gpt-oss-20b`) and the patch pass (1 concept each) — dynamic dispatch confirmed. All parsed correctly on final attempt; no contract violations (question counts, grounded `source_quote`s all held). One same-model parse retry occurred (`gpt-oss-20b`, empty output on attempt 1); cross-model failover didn't trigger naturally in this run (covered separately by offline unit tests).
+- Phase 2 (full pipeline, `water_cycle_note.txt`, sequential): 24 Questions, satisfactory after 3 verify rounds, 244.0s total, 0 rate-limit hits, 145/145 quality checks passed (100%). Faster than both single-model sequential baselines (290.5s / 365.4s) — a real concurrency win.
+
+**Explicit `max_tokens`**: every pipeline call carries an explicit completion-token cap, sized per call (`pipeline.py`'s `*_BASE_TOKENS` + `*_PER_QUESTION_TOKENS` constants: base overhead for reasoning/formatting, plus a generous per-question/per-concept margin), passed via `RunConfig(model_settings=ModelSettings(max_tokens=...))`. Without a cap, a truncated response just parse-fails and blind-retries at full price instead of failing fast — this bounds that failure mode. Sized generously relative to observed live-run output, not shaved close to the edge — the goal is bounding runaway output, not recreating the big-call design's truncation failure (see `PROGRESS.md`) at a smaller scale. Live-tested 2026-08-12 across both sequential and concurrent pipeline runs — no truncation failures in either.
 
 ### Snippet grounding
 
-The Verifier is the only agent in the whole pipeline that ever reads the full Note. The Analyzer and the Generator (both its shapes) work entirely from **snippets** — verbatim quotes + `page_number`, formatted as `["quoted text" : N]` (`N` = page number) — never the raw Note text:
+The Verifier used to be the only agent in the whole pipeline that ever read the full Note; it no longer does. `pipeline.py`'s `_extract_pages()` scopes each Verifier call to only the Note pages its Questions actually reference (split on `[Page N]` headings, union across the call's Questions' `page_number` fields), not the entire document. This is a deliberate trade against the wide-context safety net described below: a fix needing content from some *other* page than the ones already in play (the "caveat stated elsewhere in the Note" case below) can now be missed, where full-Note access would have caught it — traded for a meaningful token cut, since full-Note-every-call was ~65% of a run's total input tokens. Live-tested 2026-08-12: Verifier input tokens dropped ~28% per call vs. the pre-optimization baseline (average ~1,428 vs. ~1,974 input tokens per Verifier call), with no quality loss (163/163 checks still passed). Any fix snippet the Verifier extracts is still validated against the *true* full Note (`is_exact_substring` in `pipeline.py`'s `_verify_concept` takes the untouched `note_text`, not the scoped subset) — the page-scoping only shrinks what the Verifier *sees* going in, not what its claims get checked against coming out.
+
+The Analyzer and the Generator (both its shapes) work entirely from **snippets** — verbatim quotes + `page_number`, formatted as `["quoted text" : N]` (`N` = page number) — never the raw Note text:
 
 - The Analyzer extracts one or more snippets per Concept during its single pass (a Concept discussed in multiple places gets multiple snippets). These become the Generator's **entire** view of the Note for that Concept's initial-pass call.
-- The Verifier, when it flags a Question, extracts its own snippets backing the requested fix — reusing the Question's existing `source_quote` if that's already the right grounding, or pulling different/additional quotes if the actual problem is something the original grounding missed (e.g. a caveat stated elsewhere in the Note). These become the Generator's **entire** view of the Note for that patch call. This is *how* the pipeline still gets a wide-context safety net despite the Generator never reading the full Note: the Verifier is the one agent that does, so it's positioned to notice when a fix needs Note content beyond what a Question's own narrow slice contained, and to hand exactly that content forward — rather than either narrowing everything (losing the safety net) or handing the full Note to every call (losing the size/latency win).
-- Every snippet, wherever it's produced — Analyzer's initial extraction, Verifier's per-issue extraction, or a Generator's `source_quote` copied from either — is validated deterministically as an exact (whitespace-normalized) substring of its source text (the Note, for Analyzer/Verifier snippets; the snippets it was given, for a Generator's `source_quote`) before being trusted. Any failure retries the call that produced it. Never trust a model's claim that a quote is real — same philosophy as the weight-sum and question-count checks elsewhere in this pipeline.
+- The Verifier, when it flags a Question, extracts its own snippets backing the requested fix — reusing the Question's existing `source_quote` if that's already the right grounding, or pulling different/additional quotes if the actual problem is something the original grounding missed (e.g. a caveat stated elsewhere in the Note — see the page-scoping trade-off above, which narrows how far "elsewhere" can now reach). These become the Generator's **entire** view of the Note for that patch call. This is *how* the pipeline still gets a wide-context safety net despite the Generator never reading the full Note: the Verifier is the one agent positioned to notice when a fix needs Note content beyond what a Question's own narrow slice contained, and to hand exactly that content forward — rather than either narrowing everything (losing the safety net) or handing the full Note to every call (losing the size/latency win). Page-scoping above sits between those two extremes.
+- Every snippet, wherever it's produced — Analyzer's initial extraction, Verifier's per-issue extraction, or a Generator's `source_quote` copied from either — is validated deterministically as an exact (whitespace-normalized) substring of its source text (the *full* Note, for Analyzer/Verifier snippets, regardless of what subset the Verifier was actually shown; the snippets it was given, for a Generator's `source_quote`) before being trusted. Any failure retries the call that produced it. Never trust a model's claim that a quote is real — same philosophy as the weight-sum and question-count checks elsewhere in this pipeline.
 - `Question.source_quote` is stored on the Question itself, not just used internally to build prompts — a permanent field, part of the domain model (see Data model below), even though nothing in v1's UI displays it yet. Intended for a future citation UI (jump to/highlight the exact source text), and it also makes `page_number` provably correct rather than a separately-guessed field, since both come from the same verified snippet.
 
-Net effect: the Note's full text is read by exactly one agent — the Verifier, on every one of its concurrent per-concept calls each round, plus the Analyzer once overall. Every Generator call, initial or patch, works from a narrow, pre-verified slice sized to what that specific call actually needs; the Verifier alone always gets the whole thing, which is what lets its concurrent calls stay safe despite each only checking one concept's Questions (see Concurrent generation above).
+Net effect: the Verifier reads only the Note pages relevant to its current call's Questions, not the whole document — every other agent still works from narrow, pre-verified snippets, sized to what that specific call actually needs.
 
 ### Weight reconciliation
 
@@ -229,15 +243,10 @@ Python parses this text deterministically into `concept` + `weight_percentage` +
 **Generator — initial pass**
 ```
 You are writing exam-style questions for one Concept from a student's study
-Note, using ONLY the snippets provided below — you have not seen and must
-not assume anything about the rest of the Note.
+Note, using ONLY the snippets provided at the end of this prompt — you have
+not seen and must not assume anything about the rest of the Note.
 
-Concept: {concept}
-Snippets:
-{snippets, each as ["quoted text" : N]}
-
-Write exactly {question_count} Questions covering this Concept. For each,
-output a block with these fields:
+For each Question, output a block with these fields:
 - question_text: a clear, self-contained question, as a quoted string
 - options: exactly 4 answer choices, as a quoted-string list, e.g.
   ["Option A", "Option B", "Option C", "Option D"]
@@ -259,6 +268,10 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- A distractor must not be something the given snippets themselves state as
+  true — if a wrong option is also asserted true elsewhere in the snippets
+  and could defensibly answer the question, that's an ambiguous second
+  correct answer, not a clean distractor
 - Don't bundle multiple distinct facts into a single option
 - If question_count exceeds what the snippets can support distinctly, vary
   phrasing/format/tested detail rather than repeating — never fabricate to
@@ -275,22 +288,30 @@ Output format:
   including when writing the options list in a Python-list-like style.
 
 --START--
-question_text: "Which process describes liquid water turning into vapor?"
+question_text: "Which process describes liquid water changing into vapor and rising into the atmosphere?"
 options: ["Evaporation", "Condensation", "Infiltration", "Runoff"]
 correct_answers: [1]
 is_select_all: false
-explanation: "Evaporation is liquid water becoming vapor, driven by the sun's heat."
+explanation: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere, driven by the sun's heat."
 page_number: 1
 source_quote: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere."
 
-question_text: "Which of the following are forms of precipitation?"
+question_text: "Which of the following are forms precipitation can take?"
 options: ["Rain", "Snow", "Evaporation", "Hail"]
 correct_answers: [1, 2, 4]
 is_select_all: true
-explanation: "Rain, snow, and hail are precipitation forms; evaporation is a different process, not a form of it."
+explanation: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail. Evaporation is a different process entirely, not a form of precipitation."
 page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
+
+Concept: {concept}
+Snippets:
+{snippets, each as ["quoted text" : N]}
+
+Write exactly {question_count} Questions covering the Concept above, using
+ONLY the given Snippets, following the fields/quality bar/output format
+specified above.
 
 ```
 Python parses each block deterministically into a `Question` object (`concept` filled in by Python from the call context; each Question's permanent global index assigned positionally in output order — see Generation pipeline) — not an SDK-level structured `output_type` (see Agents section above).
@@ -299,17 +320,9 @@ Python parses each block deterministically into a `Question` object (`concept` f
 ```
 You are a tutor helping a student improve their review questions to study for an exam. Their
 question list has been reviewed prior and the ones not up to quality have been marked for you
-to fix. Fix ONLY the flagged Questions below, using ONLY the new snippets provided
-for the fix. Follow the critique to reevaluate the question and apply an appropriate fix.
-
-Concept: {concept}
-Flagged Questions (with the Verifier's critique and fix snippets):
-{for each flagged index: index, current Question fields, critique, snippets}
-
-Each flagged Question's existing source_quote is shown above for context
-only — it is what the flag is critiquing, not a valid source for your
-replacement. Do not reuse it in your output unless it also happens to
-appear verbatim among that flag's fix snippets.
+to fix. Fix ONLY the flagged Questions provided at the end of this prompt, using ONLY the new
+snippets provided for each fix. Follow the critique to reevaluate the question and apply an
+appropriate fix.
 
 For each flagged index, output a full replacement Question block — all
 fields, not just the changed ones — prefixed with the index it replaces:
@@ -330,7 +343,12 @@ fields, not just the changed ones — prefixed with the index it replaces:
 - page_number: the page number (int) the grounding snippet came from
 - source_quote: the exact snippet text (or relevant portion), as a quoted
   string, copied verbatim from that flag's fix snippets — NOT from the
-  Question's pre-fix source_quote shown above for context
+  Question's pre-fix source_quote given alongside each flagged Question below
+
+Each flagged Question's existing source_quote, given for context below, is
+what the flag is critiquing, not a valid source for your replacement. Do not
+reuse it in your output unless it also happens to appear verbatim among that
+flag's fix snippets.
 
 Do not touch Questions that weren't flagged — they are not in your input
 and must not appear in your output.
@@ -342,6 +360,10 @@ Quality bar:
 - Distractors must be plausible — wrong in a way a student could realistically
   believe, not absurd or trivially eliminable, not duplicates of each other
   or the correct answer
+- A distractor must not be something the fix snippets themselves state as
+  true — if a wrong option is also asserted true elsewhere in the fix
+  snippets and could defensibly answer the question, that's an ambiguous
+  second correct answer, not a clean distractor
 - Don't bundle multiple distinct facts into a single option
 - source_quote must be an exact substring of one of that flag's fix
   snippets — copying the pre-fix source_quote unchanged is only acceptable
@@ -359,23 +381,29 @@ Output format:
 
 --START--
 index: 5
-question_text: "Which process describes liquid water turning into vapor?"
+question_text: "Which process describes liquid water changing into vapor and rising into the atmosphere?"
 options: ["Evaporation", "Condensation", "Infiltration", "Runoff"]
 correct_answers: [1]
 is_select_all: false
-explanation: "Evaporation is liquid water becoming vapor, driven by the sun's heat."
+explanation: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere, driven by the sun's heat."
 page_number: 1
 source_quote: "Evaporation is the process by which liquid water changes into water vapor and rises into the atmosphere."
 
 index: 8
-question_text: "Which of the following are forms of precipitation?"
+question_text: "Which of the following are forms precipitation can take?"
 options: ["Rain", "Snow", "Evaporation", "Hail"]
 correct_answers: [1, 2, 4]
 is_select_all: true
-explanation: "Rain, snow, and hail are precipitation forms; evaporation is a different process, not a form of it."
+explanation: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail. Evaporation is a different process entirely, not a form of precipitation."
 page_number: 3
 source_quote: "Precipitation can take several forms depending on atmospheric temperature: rain, snow, sleet, or hail."
 --END--
+
+Concept: {concept}
+Flagged Questions (with the Verifier's critique and fix snippets):
+{for each flagged index: index, current Question fields, critique, snippets}
+
+Fix the flagged Questions above per the instructions and quality bar given.
 
 ```
 Python parses each block into its replacement `Question`, matched to the existing Question at that same global index — index is never reassigned.
@@ -383,16 +411,10 @@ Python parses each block into its replacement `Question`, matched to the existin
 **Verifier**
 ```
 You are fact-checking and quality-checking Questions made by a student to review for an exam
-against their Note's FULL text below. Ensure that the questions and their answers match the note,
-and are comprehensive enough to be of quality for a review. You are only checking questions for
-the particular concept provided, and provide critique. DO NOT CHANGE any of the question contents. 
-
-Note text:
-{full note text}
-
-Questions to check (all belong to Concept: {concept}):
-{for each: index (global), question_text, options, correct_answers,
-  is_select_all, explanation, page_number, source_quote}
+against the Note text provided at the end of this prompt. Ensure that the questions and their
+answers match the note, and are comprehensive enough to be of quality for a review. You are only
+checking questions for the particular concept provided, and provide critique. DO NOT CHANGE any of
+the question contents.
 
 For EACH Question, output one block with these fields:
 - index: the Question's global index (int), copied from its input — every
@@ -409,6 +431,10 @@ For EACH Question, output one block with these fields:
 Quality bar, checked against the Note (verbatim from Verify loop detail):
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
+- No distractor is itself asserted true elsewhere in the Note text in a way
+  that could defensibly also answer the question — a "wrong" option the Note
+  itself confirms is also true is an ambiguous second correct answer, not a
+  valid distractor, and should be patched
 - is_select_all matches the intended semantics (deliberate choice, not
   count-inferred). A Select-All Question (is_select_all: true) legitimately
   has anywhere from 1 to all 4 options correct — a single correct answer
@@ -423,6 +449,12 @@ Quality bar, checked against the Note (verbatim from Verify loop detail):
 - source_quote is a real quote genuinely present on page_number and matches verbatim, and it
   actually supports correct_answers/explanation — not fabricated, vague, or
   contradicting page_number
+- Question isn't a near-duplicate of another Question in this same call's
+  list — if two Questions test the same underlying fact/answer off the same
+  grounding with no meaningfully different angle (reworded phrasing alone
+  doesn't count as different), patch the weaker/later one, and use the
+  critique to name what distinct angle or detail the replacement should
+  cover instead
 
 Output format:
 - Separate each Question's block from the next with at least 2 newlines
@@ -445,6 +477,15 @@ snippets: []
 
 satisfactory: false
 --END--
+
+Note text:
+{full note text}
+
+Questions to check (all belong to Concept: {concept}):
+{for each: index (global), question_text, options, correct_answers,
+  is_select_all, explanation, page_number, source_quote}
+
+Evaluate each Question above against the Note text and quality bar given.
 
 ```
 Python parses each block into a `VerifierIssue` (or a no-op for "keep") plus the trailing `satisfactory` line — not an SDK-level structured `output_type` (see Agents section above). Do not flag Questions outside your assigned index set. Every snippet you extract must be an exact substring of the Note text above.
@@ -581,13 +622,15 @@ class Answer(BaseModel):
 
 - Answer correctness is grounded in the Note (no fabricated facts)
 - Distractors are plausible — not trivially wrong or duplicates of each other
+- No distractor is itself asserted true elsewhere in the Note text in a way that could defensibly also answer the question — a "wrong" option the Note itself confirms is also true is an ambiguous second correct answer, not a valid distractor, and should be patched (caught live: a "Poor harvests" distractor was marked wrong for a financial-crisis question, but the Note itself states poor harvests also worsened the crisis)
 - `is_select_all` matches the intended semantics (deliberate choice, not count-inferred). A Select-All Question (`is_select_all: true`) legitimately has anywhere from 1 to all 4 options correct — a single correct answer does NOT by itself mean `is_select_all` should be `false`. Only flag `is_select_all` if the question's own phrasing/framing doesn't fit its value — never flag it purely because `len(correct_answers)` is 1
 - No ambiguous or multiple-valid-reading phrasing
 - `explanation` actually explains the correct answer using Note content
 - Question actually matches its assigned `concept`
 - `source_quote` is a real quote genuinely present on `page_number`, and it actually supports `correct_answers`/`explanation` — not fabricated, vague, or contradicting `page_number` (this check has real teeth against fabrication: `source_quote` is also verified deterministically as a verbatim substring wherever it's produced, but *whether it actually supports the answer* is a judgment call only the Verifier can make)
+- Question isn't a near-duplicate of another Question in the same call's list — if two Questions test the same underlying fact/answer off the same grounding with no meaningfully different angle (reworded phrasing alone doesn't count as different), patch the weaker/later one, naming in the critique what distinct angle or detail the replacement should cover instead (caught live: two Questions on a history Note's "Reign of Terror" concept both tested "what ended the Terror" off the same snippet)
 
-Every flagged issue also carries its own `snippets` (verbatim Note quotes + page numbers backing the requested fix) — the Verifier extracts these itself, since it's the only agent reading the full Note; the patch call that acts on the feedback never sees the Note, only these (see Snippet grounding above).
+Every flagged issue also carries its own `snippets` (verbatim Note quotes + page numbers backing the requested fix) — the Verifier extracts these itself, from whatever Note pages it was shown (see Snippet grounding above — page-scoped, not the full Note); the patch call that acts on the feedback never sees the Note, only these.
 
 **Per-Question action** the Verifier can return: `keep` or `patch`. There is deliberately no `remove` or `split` — the Question list's length is locked at the user-confirmed total (see Generation pipeline above), so any action that changes list length is out of scope for the verify loop:
 
@@ -596,7 +639,7 @@ Every flagged issue also carries its own `snippets` (verbatim Note quotes + page
 
 **Satisfactory** is `true` only when zero Questions in the current list are flagged with an issue. `false` triggers another loop iteration (if under the 5-iteration cap).
 
-**Loop count**: the initial Generator pass is unlooped ("pass 0") but fans out to one concurrent call per concept (see Concurrent generation above), not one call total. Up to 5 Verifier→patch cycles follow; the cycles themselves are sequential (each round needs the previous round's result), but within a round BOTH the Verifier step and the patch step fan out concurrently, one call per concept (Verifier: every concept present; patch: only concepts among that round's flagged indices). Worst case: N concurrent initial calls + 5 rounds of (up to N concurrent Verifier calls + up to N concurrent patch calls), where N = concept count, not counting the single Analyzer call.
+**Loop count**: the initial Generator pass is unlooped ("pass 0") but fans out to one concurrent call per concept (see Concurrent generation above), not one call total. Up to 5 Verifier→patch cycles follow; the cycles themselves are sequential (each round needs the previous round's result), but within a round BOTH the Verifier step and the patch step fan out concurrently, one call per concept (Verifier: only concepts still `pending` — i.e. unverified, or patched last round; a concept cleared in an earlier round is never re-verified, see Concurrent generation's Verify-loop skip above; patch: only concepts among that round's flagged indices). Worst case: N concurrent initial calls + 5 rounds of (up to N concurrent Verifier calls + up to N concurrent patch calls), where N = concept count, not counting the single Analyzer call — but the *actual* worst case is smaller now, since a cleared concept drops out of every subsequent round's N.
 
 ## API contract
 
