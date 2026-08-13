@@ -71,6 +71,7 @@ Built off a hand-written (not agent-generated) fixture Question Set to validate 
 
 ## Todo
 
+- [ ] Live end-to-end verification of the merged pipeline — upload a real Note, confirm question generation by the agents, then flashcard display, Review Session, and Game Room all work correctly against that same generated `QuestionSet`. Attempted 2026-08-13 against `french_revolution_note.txt` (saved at repo root, untracked, extraction-format text ready for reuse): Analyzer and Generator-initial both succeeded live (9 concepts, 27 Questions), but the run was cancelled mid-Verifier-round-1 after hitting `gpt-oss-120b`'s daily token cap — confirmed to reset on a rolling 24h window, not calendar-day. Blocked until the cap resets.
 - [ ] Build frontend upload + Analyzer-checkpoint screens — `main`'s frontend currently only has the fixture-driven flashcard view, no upload flow at all. Wire to the new backend endpoints (`/upload`, `/generate` SSE, `PATCH`s, `/session`) now that they exist. Deferred to a later session per Tri's call.
 - [ ] Creating user accounts to store previous question sets.
 - [ ] Research way to store and rate questions for models to learn for future references without expending a lot more tokens.
