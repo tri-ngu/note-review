@@ -1,4 +1,4 @@
-# Requirements — Note Review (v1)
+# Requirements — Note Review
 
 Turns a student's PDF notes into an AI-generated Question Set, reviewable as a single-pass Review Session, and playable as a live multiplayer Game Room. See `CONTEXT.md` for canonical terminology.
 
