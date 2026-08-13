@@ -67,4 +67,5 @@ All 4 core docs are in sync. The flashcard prototype (all 3 builds), Game Room, 
 
 - Theme switching — wiring the four saved reference themes (`assets/card-themes/`) in as selectable alternatives to the default.
 - v1.x: multi-PDF merge, regeneration controls, difficulty levels, larger file support, spaced-repetition/requeue mechanics.
+- Write a real root/main project README — `frontend/README.md` is still stock Vite template boilerplate, kept as-is for now to use as a base later.
 
