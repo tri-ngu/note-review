@@ -315,11 +315,18 @@ For EACH Question, output one block with these fields:
 
 Quality bar, checked against the Note (verbatim from Verify loop detail):
 - Answer correctness is grounded in the Note (no fabricated facts)
+- correct_answers correctly identifies the intended option(s) by their
+  1-based position in options — position 1 is the FIRST listed option, not
+  the second; position 4 is the last, not out-of-range.
 - Distractors are plausible — not trivially wrong or duplicates of each other
 - No distractor is itself asserted true elsewhere in the Note text in a way
   that could defensibly also answer the question — a "wrong" option the Note
   itself confirms is also true is an ambiguous second correct answer, not a
-  valid distractor, and should be patched
+  valid distractor, and should be patched. Check with a BEST-answer test:
+  does the Note support exactly ONE option, or could a student defend more
+  than one? A stem qualifier ("primary", "main", "most direct") only
+  resolves the ambiguity if the Note itself draws that distinction — not
+  just because the question-writer added the word.
 - is_select_all matches the intended semantics (deliberate choice, not
   count-inferred). A Select-All Question (is_select_all: true) legitimately
   has anywhere from 1 to all 4 options correct — a single correct answer
