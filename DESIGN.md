@@ -649,7 +649,7 @@ class Answer(BaseModel):
 
 `RoomState` instances live in a PIN-keyed dict, in-memory, single-process — same "nested hashmap" pattern `requirements.md` already calls out for Game Room, carried over from v1's `SessionStore` decision. Many-Rooms-capable (no architectural cap on the dict itself), even though real usage tops out around 3 concurrent Rooms.
 
-**Vercel note**: Fluid Compute reuses function instances across concurrent requests but doesn't guarantee a single instance under load — this design accepts that risk and pins the deployment to effectively single-instance (capped max concurrency) rather than moving Room state to an external store (e.g. Redis). Revisit only if real usage ever exceeds what a single instance can hold — not expected at this project's scale.
+**Deployment note**: The backend runs as a single Render Web Service instance (autoscaling intentionally disabled — see Capacity map), so this in-memory, PIN-keyed dict is safe without an external store (e.g. Redis). Revisit only if real usage ever exceeds what a single instance can hold — not expected at this project's scale.
 
 ## Verify loop detail
 
@@ -985,4 +985,8 @@ Server validates every client→server message against the sender's role (Player
 - **External shared state store** (Redis/etc.): only revisit if single-instance in-memory state actually proves insufficient in practice.
 - **Partial credit for Select-All scoring**: explicitly decided against (all-or-nothing) — would need its own formula if ever revisited.
 - **Reload/resume mid-game**: a Host or Player reloading while the Room is still `lobby`/`question_active`/`answer_reveal`/`leaderboard` gets a fresh client with no resume — only an already-`finished`/evicted Room is detected and shown gracefully (see Room join flow's precheck pattern, now also used by Host). True mid-game resume is not built.
+
+## Deployment
+
+Backend: Render Web Service (native Python runtime, free plan, single instance, auto-deploy from `main`) + Postgres (free plan, provisioned, no schema yet — reserved for future account/logging work per `requirements.md`'s Planned Versions). CORS scoped via a `FRONTEND_ORIGIN` env var; session cookie flips to `SameSite=None; Secure` when cross-site (see `session.py`). `render.yaml` at repo root is the infra-as-code source of truth for the backend service + database.
 - **WS auto-reconnect**: the frontend does not retry a dropped connection (see Room WebSocket message protocol's Frontend handling notes above).

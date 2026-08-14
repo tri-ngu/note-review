@@ -57,9 +57,18 @@ Built on branch `worktree-upload-checkpoint-generating-ui`, merged into `main` 2
 - Weight-rebalance, checkpoint-totals, SSE-buffer-parsing, and generation-progress logic extracted into pure `lib/` modules, TDD'd — 66/66 frontend tests pass; backend untouched (78/78 backend tests pass).
 - Live-verified in Chrome against the real backend, not just unit tests: real Analyzer run (7 concepts from a synthetic water-cycle PDF), delete/rebalance, the imbalance guard, a full real `/generate` run through 4 verify rounds, landing on the real 18-question flashcard view, plus reload-while-ready resume. Reload-mid-generation resume verified by code review only (didn't catch a live window for it).
 
+### Deployment (backend)
+
+Backend moved onto Render (`render.yaml` Blueprint: Web Service + Postgres), driven by Game Room's WebSocket needs and the long multi-round generation pipeline not fitting a serverless model.
+
+- `render.yaml` at repo root: native Python Web Service (single instance, no autoscaling — matches the existing in-memory `SessionStore`/Room-dict design) + a Postgres instance, provisioned but no schema yet (reserved for future user-accounts/logging work, deliberately deferred).
+- Backend: `CORSMiddleware` gated on a `FRONTEND_ORIGIN` env var; session cookie flips to `SameSite=None; Secure` when cross-site; new `/health/db` endpoint checks Postgres connectivity.
+- Smoke-tested live: `/health`, `/health/db`, and a real cross-origin browser request (cookie + CORS) all confirmed working.
+- Known issue: WebSocket connections to the Render backend are currently rejected at the edge (browser test: `closed code=1006`; curl: bare `403` with no app-level response header) — blocks Game Room in this deployment until resolved. Rest of the pipeline (Upload → generation → flashcard/Review) unaffected.
+
 ## Current State
 
-All 4 core docs are in sync. The flashcard prototype (all 3 builds), Game Room, the agent pipeline, and the Upload/Checkpoint/Generating frontend are all built and merged into `main`; the full flow (Upload → Checkpoint → Generating → flashcard/Review/editing) is wired to the real backend session — a new Question Set can be created end-to-end from the browser.
+All 4 core docs are in sync. The flashcard prototype (all 3 builds), Game Room, the agent pipeline, and the Upload/Checkpoint/Generating frontend are all built and merged into `main`; the full flow (Upload → Checkpoint → Generating → flashcard/Review/editing) is wired to the real backend session — a new Question Set can be created end-to-end from the browser. Backend is now deployed on Render (see Deployment above); Game Room's WebSocket layer is currently broken in that deployment (see known issue).
 
 ## Todo
 
