@@ -59,11 +59,10 @@ Built on branch `worktree-upload-checkpoint-generating-ui`, merged into `main` 2
 
 ### Deployment
 
-Backend moved onto Render (`render.yaml` Blueprint: Web Service + Postgres), driven by Game Room's WebSocket needs and the long multi-round generation pipeline not fitting a serverless model. Frontend, previously a separate cross-origin deployment on Vercel (`flashkahoo.vercel.app`), was then consolidated onto the same Render service to drop the CORS/cross-site-cookie complexity entirely.
+Backend moved onto Render (`render.yaml` Blueprint: Web Service + Postgres), driven by Game Room's WebSocket needs and the long multi-round generation pipeline not fitting a serverless model. Frontend was then consolidated onto the same Render service to drop cross-origin CORS/cookie complexity entirely.
 
 - `render.yaml` at repo root: native Python Web Service (single instance, no autoscaling — matches the existing in-memory `SessionStore`/Room-dict design) + a Postgres instance, provisioned but no schema yet (reserved for future user-accounts/logging work, deliberately deferred). `buildCommand` now also builds the frontend (`npm ci && npm run build`) so the same deploy produces both.
 - Backend: FastAPI serves the built frontend directly — Vite's `dist/assets` mounted as static files plus a SPA catch-all route registered after all API routes (see `main.py`). Same-origin, so `CORSMiddleware` and `FRONTEND_ORIGIN` are gone; session cookie is always `SameSite=Lax`, `Secure` gated on Render's auto-set `RENDER` env var. `/health/db` endpoint checks Postgres connectivity.
-- Vercel project retired once this deployment is confirmed working live.
 - Known issue: WebSocket connections to the Render backend are currently rejected at the edge (browser test: `closed code=1006`; curl: bare `403` with no app-level response header) — blocks Game Room in this deployment until resolved. Not something this consolidation fixes, since the rejection happens before the request reaches the app, regardless of caller origin. Rest of the pipeline (Upload → generation → flashcard/Review) unaffected.
 
 ## Current State
