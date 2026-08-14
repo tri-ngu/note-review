@@ -6,6 +6,7 @@ import json
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
+from openai import BadRequestError, RateLimitError
 from pydantic import BaseModel, ValidationError
 
 from app.extraction import UploadValidationError, extract_note_text
@@ -41,7 +42,7 @@ async def upload_note(
     step_log: list[str] = []
     try:
         allocations = await run_analyzer(note_text, target_question_count, step_log)
-    except PipelineError:
+    except (PipelineError, RateLimitError, BadRequestError):
         raise HTTPException(status_code=502, detail="generation_failed")
 
     session_id = get_or_create_session_id(request, response)
@@ -82,7 +83,7 @@ def _run_pipeline_sse(
                 concept_lists, note_text, step_log, on_event=on_event
             )
             question_set = freeze(concept_lists)
-        except PipelineError:
+        except (PipelineError, RateLimitError, BadRequestError):
             async with store.mutate(session_id) as state:
                 state.status = "failed"
                 state.error_message = GENERIC_FAILURE_MESSAGE
