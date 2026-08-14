@@ -1,5 +1,6 @@
 import { parseSseBuffer } from './sseParse';
 import type { GenerationEvent } from './generationProgress';
+import { apiUrl } from './apiBase';
 
 interface RunGenerationArgs {
   endpoint: '/generate' | '/generate/retry';
@@ -10,10 +11,11 @@ interface RunGenerationArgs {
 export async function runGeneration({ endpoint, body, onEvent }: RunGenerationArgs): Promise<void> {
   let res: Response;
   try {
-    res = await fetch(endpoint, {
+    res = await fetch(apiUrl(endpoint), {
       method: 'POST',
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      credentials: 'include',
     });
   } catch {
     onEvent({ stage: 'error', message: 'Could not reach the backend. Please try again.' });

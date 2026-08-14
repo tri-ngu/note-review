@@ -9,3 +9,4 @@ openai-agents
 openai
 python-dotenv>=1.0
 pypdf>=5.0
+psycopg[binary]>=3.1

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { RoomPrecheck } from '../types/room';
 import { RoomErrorPanel } from './panels/RoomErrorPanel';
+import { apiFetch } from '../lib/apiBase';
 import styles from './JoinPage.module.css';
 
 export function JoinPage() {
@@ -17,7 +18,7 @@ export function JoinPage() {
   useEffect(() => {
     if (!pin) return;
     let cancelled = false;
-    fetch(`/rooms/${pin}`)
+    apiFetch(`/rooms/${pin}`)
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((data: RoomPrecheck) => {
         if (!cancelled) setPrecheck(data);
@@ -81,7 +82,7 @@ export function JoinPage() {
     event.preventDefault();
     setSubmitting(true);
     setSubmitError(null);
-    const response = await fetch(`/rooms/${pin}/join`, {
+    const response = await apiFetch(`/rooms/${pin}/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nickname }),

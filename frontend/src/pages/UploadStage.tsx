@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { DragEvent } from 'react';
 import type { ConceptAllocation } from '../types/allocation';
 import { JournalShell } from '../components/JournalShell';
+import { apiFetch } from '../lib/apiBase';
 import styles from './UploadStage.module.css';
 
 interface UploadStageProps {
@@ -62,7 +63,7 @@ export function UploadStage({ onUploaded }: UploadStageProps) {
     }
 
     try {
-      const res = await fetch('/upload', { method: 'POST', body: formData });
+      const res = await apiFetch('/upload', { method: 'POST', body: formData });
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { detail?: string };
         let code: string;

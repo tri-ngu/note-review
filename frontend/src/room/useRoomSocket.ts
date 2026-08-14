@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useRef } from 'react';
 import type { ClientMessage, ServerMessage } from '../types/room';
 import { initialRoomSocketState, roomSocketReducer } from './lib/roomSocketReducer';
+import { wsUrl } from '../lib/apiBase';
 
 interface UseRoomSocketArgs {
   pin: string;
@@ -31,8 +32,7 @@ export function useRoomSocket({ pin, role, playerId }: UseRoomSocketArgs) {
 
     if (!reusable) {
       const query = role === 'player' && playerId ? `?player_id=${encodeURIComponent(playerId)}` : '';
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-      socket = new WebSocket(`${protocol}://${window.location.host}/ws/room/${pin}${query}`);
+      socket = new WebSocket(wsUrl(`/ws/room/${pin}${query}`));
       socketRef.current = socket;
 
       socket.onopen = () => {

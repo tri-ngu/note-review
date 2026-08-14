@@ -5,6 +5,7 @@ import type { ConceptAllocation } from './types/allocation';
 import { renameConceptEverywhere } from './lib/renameConcept';
 import { INITIAL_PROGRESS, nextGenerationProgress, type GenerationEvent, type GenerationProgress } from './lib/generationProgress';
 import { runGeneration } from './lib/runGeneration';
+import { apiFetch } from './lib/apiBase';
 import { FlashcardView } from './components/FlashcardView';
 import { ReviewSession } from './components/ReviewSession';
 import { UploadStage } from './pages/UploadStage';
@@ -46,7 +47,7 @@ function SessionFlow() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/session')
+    apiFetch('/session')
       .then((res) => res.json() as Promise<SessionResponse>)
       .then((data) => {
         if (cancelled) return;
@@ -77,7 +78,7 @@ function SessionFlow() {
     if (stage.name !== 'generating' || stage.mode !== 'resumed') return;
     let cancelled = false;
     const interval = setInterval(() => {
-      fetch('/session')
+      apiFetch('/session')
         .then((res) => res.json() as Promise<SessionResponse>)
         .then((data) => {
           if (cancelled) return;
@@ -130,7 +131,7 @@ function SessionFlow() {
 
   const updateQuestion = async (index: number, updated: Question, renameFrom?: string): Promise<string | null> => {
     if (renameFrom) {
-      const renameRes = await fetch(`/concepts/${encodeURIComponent(renameFrom)}`, {
+      const renameRes = await apiFetch(`/concepts/${encodeURIComponent(renameFrom)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ new_name: updated.concept }),
@@ -140,7 +141,7 @@ function SessionFlow() {
       }
     }
 
-    const patchRes = await fetch(`/questions/${index + 1}`, {
+    const patchRes = await apiFetch(`/questions/${index + 1}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -170,7 +171,7 @@ function SessionFlow() {
   };
 
   const handleCreateRoom = async () => {
-    const response = await fetch('/rooms', { method: 'POST' });
+    const response = await apiFetch('/rooms', { method: 'POST' });
     if (!response.ok) return;
     const data = (await response.json()) as { pin: string };
     navigate(`/host/${data.pin}`);

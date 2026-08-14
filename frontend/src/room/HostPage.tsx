@@ -8,6 +8,7 @@ import { HostRevealPanel } from './panels/HostRevealPanel';
 import { LeaderboardPanel } from './panels/LeaderboardPanel';
 import { FinishedPanel } from './panels/FinishedPanel';
 import { RoomErrorPanel } from './panels/RoomErrorPanel';
+import { apiFetch } from '../lib/apiBase';
 
 export function HostPage() {
   const { pin } = useParams<{ pin: string }>();
@@ -16,7 +17,7 @@ export function HostPage() {
   useEffect(() => {
     if (!pin) return;
     let cancelled = false;
-    fetch(`/rooms/${pin}`)
+    apiFetch(`/rooms/${pin}`)
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((data: RoomPrecheck) => {
         if (!cancelled) setPrecheck(data);
