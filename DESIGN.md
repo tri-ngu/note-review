@@ -441,11 +441,18 @@ For EACH Question, output one block with these fields:
 
 Quality bar, checked against the Note (verbatim from Verify loop detail):
 - Answer correctness is grounded in the Note (no fabricated facts)
+- correct_answers correctly identifies the intended option(s) by their
+  1-based position in options — position 1 is the FIRST listed option, not
+  the second; position 4 is the last, not out-of-range.
 - Distractors are plausible — not trivially wrong or duplicates of each other
 - No distractor is itself asserted true elsewhere in the Note text in a way
   that could defensibly also answer the question — a "wrong" option the Note
   itself confirms is also true is an ambiguous second correct answer, not a
-  valid distractor, and should be patched
+  valid distractor, and should be patched. Check with a BEST-answer test:
+  does the Note support exactly ONE option, or could a student defend more
+  than one? A stem qualifier ("primary", "main", "most direct") only
+  resolves the ambiguity if the Note itself draws that distinction — not
+  just because the question-writer added the word.
 - is_select_all matches the intended semantics (deliberate choice, not
   count-inferred). A Select-All Question (is_select_all: true) legitimately
   has anywhere from 1 to all 4 options correct — a single correct answer
@@ -649,8 +656,9 @@ class Answer(BaseModel):
 **Verifier criteria**, checked per Question against the Note text:
 
 - Answer correctness is grounded in the Note (no fabricated facts)
+- `correct_answers` correctly identifies the intended option(s) by their 1-based position in `options` — position 1 is the FIRST listed option, not the second; position 4 is the last, not out-of-range.
 - Distractors are plausible — not trivially wrong or duplicates of each other
-- No distractor is itself asserted true elsewhere in the Note text in a way that could defensibly also answer the question — a "wrong" option the Note itself confirms is also true is an ambiguous second correct answer, not a valid distractor, and should be patched (caught live: a "Poor harvests" distractor was marked wrong for a financial-crisis question, but the Note itself states poor harvests also worsened the crisis)
+- No distractor is itself asserted true elsewhere in the Note text in a way that could defensibly also answer the question — a "wrong" option the Note itself confirms is also true is an ambiguous second correct answer, not a valid distractor, and should be patched. Check with a BEST-answer test: does the Note support exactly ONE option, or could a student defend more than one? A stem qualifier ("primary", "main", "most direct") only resolves the ambiguity if the Note itself draws that distinction — not just because the question-writer added the word (caught live: a "Poor harvests" distractor was marked wrong for a financial-crisis question, but the Note itself states poor harvests also worsened the crisis)
 - `is_select_all` matches the intended semantics (deliberate choice, not count-inferred). A Select-All Question (`is_select_all: true`) legitimately has anywhere from 1 to all 4 options correct — a single correct answer does NOT by itself mean `is_select_all` should be `false`. Only flag `is_select_all` if the question's own phrasing/framing doesn't fit its value — never flag it purely because `len(correct_answers)` is 1
 - No ambiguous or multiple-valid-reading phrasing
 - `explanation` actually explains the correct answer using Note content
