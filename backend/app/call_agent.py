@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from agents import Agent, ModelSettings, Runner, RunConfig, set_default_openai_client, set_default_openai_api, set_tracing_disabled
 from agents.models.openai_chatcompletions import OpenAIChatCompletionsModel
 from dotenv import load_dotenv
-from openai import AsyncOpenAI, RateLimitError
+from openai import AsyncOpenAI, BadRequestError, RateLimitError
 
 load_dotenv()
 
@@ -461,6 +461,17 @@ async def call_agent_async(
                 raise
             wait_s = _parse_retry_after_seconds(str(e)) or (5 * attempt)
             await asyncio.sleep(wait_s)
+        except BadRequestError:
+            # Groq occasionally rejects an otherwise-valid call with "Please
+            # reduce the length of the messages or completion" (seen live on
+            # Analyzer calls well under the documented token caps) — not a
+            # rate limit, but a bounded retry the same way still clears it in
+            # practice. If it doesn't, this re-raises past call_agent_async's
+            # caller same as an exhausted RateLimitError does.
+            attempt += 1
+            if attempt > max_retries:
+                raise
+            await asyncio.sleep(attempt)
     elapsed = time.monotonic() - start
     output = result.final_output
     usage = result.raw_responses[-1].usage if result.raw_responses else None
