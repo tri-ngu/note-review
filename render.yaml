@@ -9,13 +9,11 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: pip install -r backend/requirements.txt
+    buildCommand: pip install -r backend/requirements.txt && npm --prefix frontend ci && npm --prefix frontend run build
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir backend
     healthCheckPath: /health
     envVars:
       - key: GROQ_API_KEY
-        sync: false
-      - key: FRONTEND_ORIGIN
         sync: false
       - key: DATABASE_URL
         fromDatabase:

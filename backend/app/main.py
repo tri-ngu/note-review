@@ -1,16 +1,20 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import psycopg
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.generation_http import generation_router
 from app.rooms_http import rooms_router
 from app.rooms_ws import notify_and_close_evicted_room, rooms_websocket_endpoint
 from app.session_store import SessionStore
 from app.store import RoomStore
+
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 
 async def start_cleanup_sweep(store: RoomStore, interval_seconds: float = 30.0, ttl_seconds: float = 300.0) -> None:
@@ -32,16 +36,6 @@ def create_app() -> FastAPI:
     app.state.room_store = RoomStore()
     app.state.session_store = SessionStore()
 
-    frontend_origin = os.environ.get("FRONTEND_ORIGIN")
-    if frontend_origin:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=[frontend_origin],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-
     @app.get("/health")
     def health_check():
         return {"status": "ok"}
@@ -61,6 +55,16 @@ def create_app() -> FastAPI:
     app.include_router(rooms_router)
     app.include_router(generation_router)
     app.add_api_websocket_route("/ws/room/{pin}", rooms_websocket_endpoint)
+
+    if FRONTEND_DIST.exists():
+        app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+        @app.get("/{full_path:path}")
+        def serve_spa(full_path: str):
+            candidate = FRONTEND_DIST / full_path
+            if candidate.is_file():
+                return FileResponse(candidate)
+            return FileResponse(FRONTEND_DIST / "index.html")
 
     return app
 

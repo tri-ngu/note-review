@@ -57,14 +57,14 @@ Built on branch `worktree-upload-checkpoint-generating-ui`, merged into `main` 2
 - Weight-rebalance, checkpoint-totals, SSE-buffer-parsing, and generation-progress logic extracted into pure `lib/` modules, TDD'd — 66/66 frontend tests pass; backend untouched (78/78 backend tests pass).
 - Live-verified in Chrome against the real backend, not just unit tests: real Analyzer run (7 concepts from a synthetic water-cycle PDF), delete/rebalance, the imbalance guard, a full real `/generate` run through 4 verify rounds, landing on the real 18-question flashcard view, plus reload-while-ready resume. Reload-mid-generation resume verified by code review only (didn't catch a live window for it).
 
-### Deployment (backend)
+### Deployment
 
-Backend moved onto Render (`render.yaml` Blueprint: Web Service + Postgres), driven by Game Room's WebSocket needs and the long multi-round generation pipeline not fitting a serverless model.
+Backend moved onto Render (`render.yaml` Blueprint: Web Service + Postgres), driven by Game Room's WebSocket needs and the long multi-round generation pipeline not fitting a serverless model. Frontend, previously a separate cross-origin deployment on Vercel (`flashkahoo.vercel.app`), was then consolidated onto the same Render service to drop the CORS/cross-site-cookie complexity entirely.
 
-- `render.yaml` at repo root: native Python Web Service (single instance, no autoscaling — matches the existing in-memory `SessionStore`/Room-dict design) + a Postgres instance, provisioned but no schema yet (reserved for future user-accounts/logging work, deliberately deferred).
-- Backend: `CORSMiddleware` gated on a `FRONTEND_ORIGIN` env var; session cookie flips to `SameSite=None; Secure` when cross-site; new `/health/db` endpoint checks Postgres connectivity.
-- Smoke-tested live: `/health`, `/health/db`, and a real cross-origin browser request (cookie + CORS) all confirmed working.
-- Known issue: WebSocket connections to the Render backend are currently rejected at the edge (browser test: `closed code=1006`; curl: bare `403` with no app-level response header) — blocks Game Room in this deployment until resolved. Rest of the pipeline (Upload → generation → flashcard/Review) unaffected.
+- `render.yaml` at repo root: native Python Web Service (single instance, no autoscaling — matches the existing in-memory `SessionStore`/Room-dict design) + a Postgres instance, provisioned but no schema yet (reserved for future user-accounts/logging work, deliberately deferred). `buildCommand` now also builds the frontend (`npm ci && npm run build`) so the same deploy produces both.
+- Backend: FastAPI serves the built frontend directly — Vite's `dist/assets` mounted as static files plus a SPA catch-all route registered after all API routes (see `main.py`). Same-origin, so `CORSMiddleware` and `FRONTEND_ORIGIN` are gone; session cookie is always `SameSite=Lax`, `Secure` gated on Render's auto-set `RENDER` env var. `/health/db` endpoint checks Postgres connectivity.
+- Vercel project retired once this deployment is confirmed working live.
+- Known issue: WebSocket connections to the Render backend are currently rejected at the edge (browser test: `closed code=1006`; curl: bare `403` with no app-level response header) — blocks Game Room in this deployment until resolved. Not something this consolidation fixes, since the rejection happens before the request reaches the app, regardless of caller origin. Rest of the pipeline (Upload → generation → flashcard/Review) unaffected.
 
 ## Current State
 

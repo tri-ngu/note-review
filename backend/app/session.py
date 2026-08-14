@@ -5,12 +5,9 @@ from fastapi import Request, Response
 
 SESSION_COOKIE_NAME = "session_id"
 
-# Frontend (Vercel) and backend (Render) are different origins in production, so the
-# session cookie must be SameSite=None + Secure to be sent cross-site at all. Locally
-# (FRONTEND_ORIGIN unset) both run same-origin via the Vite dev proxy, where
-# SameSite=None without Secure is rejected by browsers over plain http — samesite="lax"
-# still works there since there's no cross-site request to begin with.
-_CROSS_SITE = bool(os.environ.get("FRONTEND_ORIGIN"))
+# Render sets RENDER=true on deployed services; secure cookies require https, which
+# only exists there, not in local dev over plain http.
+_SECURE = bool(os.environ.get("RENDER"))
 
 
 def get_or_create_session_id(request: Request, response: Response) -> str:
@@ -22,7 +19,7 @@ def get_or_create_session_id(request: Request, response: Response) -> str:
         key=SESSION_COOKIE_NAME,
         value=new_session_id,
         httponly=True,
-        samesite="none" if _CROSS_SITE else "lax",
-        secure=_CROSS_SITE,
+        samesite="lax",
+        secure=_SECURE,
     )
     return new_session_id
